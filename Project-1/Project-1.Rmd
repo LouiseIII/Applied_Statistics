@@ -1,0 +1,364 @@
+---
+title: "Project 1"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE)
+library(tidyverse)
+library(ggplot2)
+```
+
+
+## Project 1 : Snow Particles 
+
+In this Project, we will analyze the data "snow_particles" from a Ph.D. student at the Laboratory of Cryospheric Sciences at EPFL, which lists the snow-flake diameters. 
+
+One remark to make is to observe that we don't have access to the exact data (i.e, diameters), only some rounding: we know the number of particles in a given interval.
+
+The **goal** here is to simulate snow-flake diameters that are compatible with the data. 
+
+In this report, we will first make a first explanation of the data, the aim would be to identify an adequate model. Then we will fit this model to the data using the EM-Algorithm which will help us to determine the parameters needed. And we will carefully conclude by making a test to certify that the model chosen is appropriate.   
+
+
+## 1) First Analysis of the data
+
+Before beginning the deep analysis we need to explore the data, and the easiest way to do it is to plot the data. This way we will have a better idea of the problem in purpose. 
+
+
+```{r, clean data} 
+setwd("~/Google Drive/EPFL/Applied Stat/StatApp-314577/Project-1")
+data <- read.csv2("1_snow_particles.csv", sep=",")
+data <- data.frame(startpoint <- as.numeric(data$startpoint),
+                   endpoint <- as.numeric(data$endpoint),
+                   value <- as.numeric(data$retained....),
+                   number <- as.numeric(data$particles.detected))
+```
+
+```{r, fig.align="center", fig.cap="Figure 1: Representation of the 'snow_particles' data", eval=FALSE}
+x <- (data$endpoint-data$startpoint)/2 + data$startpoint
+data_clean <- data.frame(start=data$startpoint)
+
+# I plot the proportion in the middle of each interval 
+ggplot()+
+  geom_point(aes(x[1:51], data$value[1:51]), color="red")+
+  geom_line(aes(x[1:51], data$value[1:51]), color="black")+
+  xlab("Diameters")+
+  ylab("Proportion")+
+  theme_minimal()
+
+```
+
+When we take a look at the data, it appears that there are larger proportions and therefore a stronger representation of diameters between 0.4 and 1.5. 
+However, the difference in the size of the intervals may be a source of error in this case. 
+Indeed, the proportions of the diameters between 0.1 and 0.4 are smaller but the intervals are also smaller, which could lead to a higher proportion in the end.
+
+Therefore, we need to take this into account in our graph. We can do this by dividing the proportion of each interval by 100 times the length of that interval. The result is shown in Figure 1, where we plot the modified proportion in the middle of all respective intervals (in red).  
+
+```{r, fig.align="center", fig.cap="Figure 1: Representation of the 'snow_particles' data"}
+# I would like to create an approximation of the density by taking the length of the interval into account 
+x <- (data$endpoint-data$startpoint)/2 + data$startpoint
+length_inter <- (data$endpoint - data$startpoint)*100
+
+
+ggplot()+
+  geom_point(aes(x[1:51], data$value[1:51]/length_inter[1:51]), color="red")+
+  geom_line(aes(x[1:51], data$value[1:51]/length_inter[1:51]), color="black")+
+  xlab("Diameters")+
+  ylab("Proportion")+
+  theme_minimal()
+```
+
+Then, Figure 1 allows us to understand that the density of the data will have two bumps around 0.2 and 0.7. This is how we can make the link with the bi-log-normal distribution which has the advantage of being asymmetrical and above all only taking positive values, which makes sense given that diameter cannot be negative.  
+
+To recall the distribution of the log-normal distribution is for all positive x (with real $\mu$ and positive $\sigma$):
+$$f(x, \mu, \sigma) = \frac{1}{x\sqrt{2 \pi \sigma^2}}\exp{(- \frac{(\ln(x) - \mu)^2}{2 \sigma^2})}$$
+So the distribution of a bi-log-normal distribution is (with $\tau$ in [0, 1]):
+$$f_\star(x) = (1 - \tau) \frac{1}{x\sqrt{2 \pi \sigma_1^2}}\exp{(- \frac{(\ln(x) - \mu_1)^2}{2 \sigma_1^2})} + \tau \frac{1}{x\sqrt{2 \pi \sigma_2^2}}\exp{(- \frac{(\ln(x) - \mu_2)^2}{2 \sigma_2^2})} $$
+From here we will suppose that the data comes from a bi-log-normal distribution. The purpose  is now to estimate the vector of parameters : $\theta = (\tau, \mu_1, \sigma_1^2, \mu_2, \sigma_2^2)$. And one way to do it is to use the EM-Algorithm.  
+
+
+## Expectation - Maximization (EM) Algorithm 
+
+The EM-Algorithm is indeed a popular tool for modeling multimodality and is very useful when the estimation of the parameters by maximizing the likelihood is difficult, as in this case.
+It is an iterative method that aims to determine the parameters from random values and adapt them until the likelihood is close enough to the optimum.
+
+The algorithm is processed in two different steps: the "Expectation" and the "Maximization".
+
+### 1) Theory Part
+
+**The E - step** aims to estimate the unknown parameters given the data (X) and the values of the parameters at the previous iteration ($\hat{\theta}^{l-1}$). In other words, we need to calculate : 
+$$\mathbb{E}_{\hat{\theta}^{l-1}}[l(\theta) | X = x] = Q (\theta, \hat{\theta}^{l-1})$$
+Here $$l(\theta) = \sum_{n=1}^N log(f_\star(x_n, \theta))$$
+
+And to help us, there exist a "trick" which consists of introducing a Bernoulli variable $Z_n$ of probability $\tau$ for each observation. If $Z_n = 1$, then we will suppose that $x_n$ comes from a log-normal of parameters $(\mu_2, \sigma_2)$ and $(\mu_1, \sigma_1)$ in the other case. 
+With this new information we can write the log-likelihood in the following form : 
+
+$$\begin{align*}
+l(\theta) &= N_1 log(1 - \tau) + N_2 log(\tau) + \sum_{n=1}^N (1 - Z^{(n)}) log(f(x^{(n)}, \mu_1, \sigma_1)) + \sum_{n=1}^N Z^{(n)} log(f(x^{(n)}, \mu_2, \sigma_2)) 
+\end{align*}$$
+
+with $N_2 = \sum_{n=1}^N Z^{(n)}$ and $N_1 = N - N_2$. We can now deduce :  
+
+$$\begin{align*}
+ Q (\theta, \hat{\theta}^{l-1}) &= log(1 - \tau) (N - \sum_{n=1}^N p^{l-1}_n) + log(\tau) \sum_{n=1}^N p^{l-1}_n + \sum_{n=1}^N (1 - p^{l-1}_n) log(f(x^{(n)}, \hat{\mu}_1, \hat{\sigma}_1)) + \sum_{n=1}^N p^{l-1}_n log(f(x^{(n)}, \hat{\mu}_2, \hat{\sigma}_2)) 
+\end{align*}$$
+
+with $p^{l-1}_n = \mathbb{E}_{\hat{\theta}^{l-1}}[Z^{(n)} | X^{(n)} = x^{(n)}] = \frac{f(x^{(n)}, \hat{\mu}_2, \hat{\sigma}_2) \hat{\tau}^{l-1}}{f_2(x^{(n)}, \hat{\mu}_1, \hat{\mu}_2,  \hat{\sigma}_1, \hat{\sigma}_2, \hat{\tau}^{l-1})}$
+
+
+**The M - step** aims to maximize the likelihood. And by deriving the previous formula by respectively $\tau, \mu_1, \mu_2, \sigma_1, \sigma_2$, we can calculate the maximizers that are : $$\hat{\tau} = \frac{\sum_{n=1}^N p_n^{l-1}}{N}$$
+$$\hat{\mu}_1 = \frac{\sum_{n=1}^N ln({x^{(n)})}(1 - p_n^{l-1})}{\sum_{n=1}^N 1 - p_n^{l-1}}$$
+$$\hat{\mu}_2 = \frac{\sum_{n=1}^N ln({x^{(n)})}p_n^{l-1}}{\sum_{n=1}^N  p_n^{l-1}}$$
+$$\hat{\sigma}_1^2 = \frac{\sum_{n=1}^N (ln({x^{(n)}) - \mu_1)^2}(1 - p_n^{l-1})}{\sum_{n=1}^N 1 - p_n^{l-1}}$$
+
+$$\hat{\sigma}_2^2 = \frac{\sum_{n=1}^N (ln({x^{(n)})} - \mu_2)^2 p_n^{l-1}}{\sum_{n=1}^N  p_n^{l-1}}$$
+
+
+
+```{r, bi-log-normal law & log likelihood}
+f <- function(x, mu1, mu2, sigma1, sigma2, tau){
+  return((1 - tau) * dlnorm(x, mu1, sigma1) + tau * dlnorm(x, mu2, sigma2))
+}
+
+log_likelihood <- function(X, mu1, mu2, sigma1, sigma2, tau){
+  return (sum(log(f(X, mu1, mu2, sigma1, sigma2, tau))))
+}
+
+```
+
+### 2) Jittering & Implementation 
+
+Nevertheless, before implementing the algorithm, a problem arises: we have only access to the rounding data, not the true one. To deal with it we decide to estimate the initial data by jittering the rounding one. This means that for each interval we uniformly draw the specified number of particles in it. 
+
+```{r, jittering data}
+number <- round((data$value * data$number)/100)
+data_jit <- rep(0, length(number))
+k <- 0
+for(i in 1:45){
+  data_jit[(k+1) : (k + number[i])] <- runif(number[i], data$startpoint[i], endpoint[i])
+  k <- k + number[i]
+}
+
+X <- data_jit
+
+```
+
+---
+
+I initialized the algorithm with the following parameters : $\mu_1 = -2$, $\mu_2 = -0.39$, $\sigma_1 = 1/\sqrt5$, $\sigma_2 = 1/\sqrt8$, and $\tau = 0.75$. 
+These parameters indeed seem to produce a density not too far from the data (as we can see in Figure 2 below). By initializing the values in this manner, we are optimistic that the algorithm will converge and converge quickly. 
+
+
+```{r}
+em <- function(X, tol, mu1_l, mu2_l, sigma1_l, sigma2_l, tau_l){
+  logl_prev <- 0 
+  logl <- log_likelihood(X, mu1_l, mu2_l, sigma1_l, sigma2_l, tau_l)
+  i <- 0
+  while (abs(logl_prev - logl) > tol & i<300) {
+    i <- i+1
+    logl_prev <- logl
+    p <- tau_l * dlnorm(X, mu2_l, sigma2_l) /  f(X, mu1_l, mu2_l, sigma1_l, sigma2_l, tau_l)
+    tau_l <- mean(p)
+    
+    mu1_l <- sum((1-p)*log(X))/sum(1-p)
+    mu2_l <- sum(p*log(X))/sum(p)
+    
+    sigma1_l <- sqrt(sum((1-p)*(log(X) - mu1_l)^2)/sum(1-p))
+    sigma2_l <- sqrt(sum(p * (log(X) - mu2_l)^2)/sum(p))
+    
+    logl <- log_likelihood(X, mu1_l, mu2_l, sigma1_l, sigma2_l, tau_l)
+  }
+  
+  if (i>99){
+    print("the algorithm didn't converge")
+  }
+  
+  if (tau_l < 0.5){
+    return(list(mu2_l, mu1_l, sigma2_l, sigma1_l, 1-tau_l))
+  }
+  return(list(mu1_l, mu2_l, sigma1_l, sigma2_l, tau_l))
+}
+
+L <- em(X, 0.000001, -2, -0.39, sqrt(1/5), sqrt(1/8), 0.75)
+
+mu1 = unlist(L[1])
+mu2 = unlist(L[2])
+sigma1 = unlist(L[3])
+sigma2 = unlist(L[4])
+tau = unlist(L[5])
+```
+
+After running this algorithm we obtained the following parameters : $\mu_1 =$ `r mu1`, $\mu_2 =$ `r mu2`, $\sigma_1 =$ `r sigma1`, $\sigma_2 =$ `r sigma2`, and $\tau =$ `r tau`. To see the difference between the initial parameters we can plot both densities. 
+
+```{r, fig.align="center", fig.cap="Figure 2 : Histogram of the jittered data with the initial density given to the EM-Algorithm and the one obtained after running"}
+seq <- seq(0, 2, 0.01)
+
+ggplot()+
+  geom_histogram(aes(data_jit, y=..density..))+
+  xlab("Diameters")+
+  ylab("")+
+  geom_line(aes(seq, f(seq, -2, -0.39, sqrt(1/5), sqrt(1/8), 0.75), colour="Initial_Density"))+
+  geom_line(aes(seq, f(seq, mu1, mu2, sigma1, sigma2, tau), colour="Density_Obtained"))+
+  scale_color_manual(name="", values=c(Initial_Density = "turquoise3", Density_Obtained="hotpink2"))
+
+```
+
+The result shown in Figure 2 is quite satisfying since the pink curve fits the data better than the initial, we can conclude that the algorithm converges as we hoped. 
+
+At this point, one additional remark has to be make, we found the parameters to fit the jittered data and note the initial one (even if there are close, they are not exactly the same). 
+The next step of our report will thus consist in estimating the true parameters of our data from the results obtained. For this, we can note that even if the true values are not available, we can use the informations on the intervals to derive the likelihood of contribution. 
+
+
+## Optimization
+
+The likelihood contribution of the rounding data is :
+$$f_{round}(x, \theta) = \prod_{k=1}^{52} [F(start_k) - F(end_k)]^{number_k}$$
+
+where for every of the 52 intervals : 
+
+- $F(start_k)$ is the cumulative distribution evaluates at the start of the interval k
+
+- $F(end_k)$ is the cumulative distribution evaluates at the end of the interval k
+
+- ${number_k}$ is the number of element in the interval k 
+
+So the negative log likelihood contribution is : 
+$$l_{round}(x, \theta) = - \sum_{k=1}^{52} {number_k} \times log[F(start_k) - F(end_k)]$$
+
+
+
+```{r}
+log_round <- function(data, par){
+  return(sum(-data$value*log(par[5]*(plnorm(data$endpoint, par[2], par[4]) 
+                                    - plnorm(data$startpoint, par[2], par[4])) + 
+                       (1- par[5])*(plnorm(data$endpoint, par[1], par[3]) 
+                                    - plnorm(data$startpoint, par[1], par[3])))))
+}
+
+opti <- optim(par=c(mu1, mu2, sigma1, sigma2, tau), log_round, data=data)$par
+```
+
+Now we can apply an optimization method on this function and initialize it to the values found previously. 
+We then obtain : $\mu_1 =$ `r opti[1]`, $\mu_2 =$ `r opti[2]`, $\sigma_1 =$ `r opti[3]`, $\sigma_2 =$ `r opti[4]`, and $\tau =$ `r opti[5]`. Here again we can plot the densities to illustrate :  
+
+```{r, fig.align="center", fig.cap="Figure 3 : Histogram of the jittered data with the density obtained by the EM-Algorithm and the one obtained after the optimization"}
+ggplot()+
+  geom_histogram(aes(data_jit, y=..density..))+
+  xlab("Diameters")+
+  ylab("")+
+  geom_line(aes(seq, f(seq, opti[1], opti[2], opti[3], opti[4],opti[5]), colour="Density_Optimized"))+
+  geom_line(aes(seq, f(seq, mu1, mu2, sigma1, sigma2, tau), colour="Density_Obtained"))+
+  scale_color_manual(name="", values=c(Density_Optimized = "palegreen3", Density_Obtained="hotpink2"))
+  #geom_point(aes(x[1:51], data$value[1:51]/length_inter[1:51]), color="red")
+
+```
+
+Figure 3 shows that the optimized density is indeed more faithful to the density found during the exploration phase. Indeed, we can notice that the first bell of the density is now more pronounced and reaches the value of 2, just like during the first part.  
+
+## Parametric Bootstrap 
+
+Until here, we base all our study on the hypothesis that the data comes from a bi-log-normal distribution. So before concluding anything it can be relevant to verify that. 
+One popular method for that is to use parametric bootstrap and "Goodness-of-fit Testing".
+
+The idea is therefore to create a test with :
+$$H_0 = F \in \mathbf{F}$$
+against $$H_1 = F \notin \mathbf{F}$$
+with $\mathbf{F}$ the space of the bi-log-normal distribution which has five parameters : 
+
+- 2 real values, $\mu_1$ and $\mu_2$
+
+- 2 positive ones, $\sigma_1$ and $\sigma_2$
+
+- and one in the interval [0, 1], $\tau$. 
+
+For this test we use the Kolmogorov-Smirnov Statistic :
+
+$$T = sup_x | \hat{F}_N (x) - F_{\hat\theta} |$$
+The idea is to resample the data rounding we have and repeat exactly the steps done previously, i.e. jittering the data, estimating the parameters by the EM algorithm, and then optimizing the likelihood contribution in order to determine the Statistics for each replication. 
+
+```{r, Evaluation of the T statistic}
+#cumulative funnction of the mixture law
+pl <- function(x, mu1, mu2, sigma1, sigma2, tau){
+  return(tau * plnorm(x, mu2, sigma2) + (1-tau)*plnorm(x, mu1, sigma1))
+}
+
+# Calcul of the statistic 
+
+ecdd <- ecdf(X)
+ecd <- ecdd(sort(X))
+tt <- max(abs(ecd-pl(sort(X), opti[1], opti[2], opti[3], opti[4], opti[5])))
+#p_value <- 10
+```
+
+
+```{r, bootstrap}
+B <- 100
+opt <- matrix(0, nrow=B, ncol=5)
+t <- rep(0, B)
+
+for (b in 1:B){
+  # 1) Génération du sample & data
+  samp <- sample(x=1:52, size=data$number[1], prob=data$value, replace=TRUE)
+  vec = rep(0, 52)
+  for (i in 1:52){
+    vec[i] <- sum(samp==i)
+  }
+    
+  vect = vec / data$number[1]* 100
+    
+  data2 <- data.frame(startpoint <- data$startpoint,
+                        endpoint <- data$endpoint,
+                        value <- vect,
+                        number <- data$number)
+  
+  # 2) Jittered data 
+  number <- round((data2$value * data2$number)/100)
+  data_jit <- rep(0, length(number))
+  k <- 0
+  for(i in 1:45){
+    data_jit[(k+1) : (k + number[i])] <- runif(number[i], data2$startpoint[i], data2$endpoint[i])
+    k <- k + number[i]
+  }
+  
+  X <- data_jit
+  
+  # 3) Fonction EM 
+  L <- em(X, 0.000001, opti[1], opti[2] ,opti[3],  opti[4], opti[5])
+    
+  mu1 = unlist(L[1])
+  mu2 = unlist(L[2])
+  sigma1 = unlist(L[3])
+  sigma2 = unlist(L[4])
+  tau = unlist(L[5])
+  
+  # 4) Optimisation 
+  opt[b, 1:5] <- optim(par=c(mu1, mu2, sigma1, sigma2, tau), log_round, data=data2)$par
+  
+  # 5) Calcul of the T - Statistic
+  #seq <- seq(0, 1.5, 0.1)
+  ecdd <- ecdf(X)
+  ecd <- ecdd(sort(X))
+  t[b] <- max(abs(ecd-pl(sort(X), opt[b, 1], opt[b, 2], opt[b, 3], opt[b, 4], opt[b, 5])))
+}
+
+p_value <- (1+ sum(t > tt))/(B+1)
+
+```
+
+With 100 replications we obtained the p-value `r p_value`, which is not close to 0 so there is no reason to reject the null hypothesis. And the assumption is adequate. 
+
+## Conclusion 
+
+In conclusion, throughout this report, we have built a model around the hypothesis that the "snow particles" comes from a bi-log normal distribution. This assumption has been carefully checked in the last section. 
+The previous analysis allowed us to determine the most appropriate parameter values for first an approximation of the data and then the true data which ends to the following parameters : $\mu_1 =$ `r opti[1]`, $\mu_2 =$ `r opti[2]`, $\sigma_1 =$ `r opti[3]`, $\sigma_2 =$ `r opti[4]`, and $\tau =$ `r opti[5]`. 
+
+However, in this report we have essentially adopted a frequentist viewpoint. With more time, the analysis of a Bayesian point of view would have been an interesting point to add and compare with the results obtained.
+
+
+
+
+
+
+
+
