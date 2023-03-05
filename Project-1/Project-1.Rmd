@@ -21,7 +21,7 @@ The **goal** here is to simulate snow-flake diameters that are compatible with t
 In this report, we will first make a first explanation of the data, the aim would be to identify an adequate model. Then we will fit this model to the data using the EM-Algorithm which will help us to determine the parameters needed. And we will carefully conclude by making a test to certify that the model chosen is appropriate.   
 
 
-## 1) First Analysis of the data
+## First Analysis of the data
 
 Before beginning the deep analysis we need to explore the data, and the easiest way to do it is to plot the data. This way we will have a better idea of the problem in purpose. 
 
@@ -53,7 +53,7 @@ When we take a look at the data, it appears that there are larger proportions an
 However, the difference in the size of the intervals may be a source of error in this case. 
 Indeed, the proportions of the diameters between 0.1 and 0.4 are smaller but the intervals are also smaller, which could lead to a higher proportion in the end.
 
-Therefore, we need to take this into account in our graph. We can do this by dividing the proportion of each interval by 100 times the length of that interval. The result is shown in Figure 1, where we plot the modified proportion in the middle of all respective intervals (in red).  
+Therefore, we need to take this into account in our graph. We can do this by dividing the proportion of each interval by 100 times the length of that interval. The result is shown in Figure 1, where we plot the modified proportions in the middle of all respective intervals (in red).  
 
 ```{r, fig.align="center", fig.cap="Figure 1: Representation of the 'snow_particles' data"}
 # I would like to create an approximation of the density by taking the length of the interval into account 
@@ -146,7 +146,7 @@ X <- data_jit
 
 ---
 
-I initialized the algorithm with the following parameters : $\mu_1 = -2$, $\mu_2 = -0.39$, $\sigma_1 = 1/\sqrt5$, $\sigma_2 = 1/\sqrt8$, and $\tau = 0.75$. 
+We initialized the algorithm with the following parameters : $\mu_1 = -2$, $\mu_2 = -0.39$, $\sigma_1 = 1/\sqrt5$, $\sigma_2 = 1/\sqrt8$, and $\tau = 0.75$. 
 These parameters indeed seem to produce a density not too far from the data (as we can see in Figure 2 below). By initializing the values in this manner, we are optimistic that the algorithm will converge and converge quickly. 
 
 
@@ -191,7 +191,7 @@ tau = unlist(L[5])
 
 After running this algorithm we obtained the following parameters : $\mu_1 =$ `r mu1`, $\mu_2 =$ `r mu2`, $\sigma_1 =$ `r sigma1`, $\sigma_2 =$ `r sigma2`, and $\tau =$ `r tau`. To see the difference between the initial parameters we can plot both densities. 
 
-```{r, fig.align="center", fig.cap="Figure 2 : Histogram of the jittered data with the initial density given to the EM-Algorithm and the one obtained after running"}
+```{r, fig.align="center", fig.cap="Figure 2 : Histogram of the jittered data with the initial density given to the EM-Algorithm and the one obtained after running it"}
 seq <- seq(0, 2, 0.01)
 
 ggplot()+
@@ -207,24 +207,24 @@ ggplot()+
 The result shown in Figure 2 is quite satisfying since the pink curve fits the data better than the initial, we can conclude that the algorithm converges as we hoped. 
 
 At this point, one additional remark has to be make, we found the parameters to fit the jittered data and note the initial one (even if there are close, they are not exactly the same). 
-The next step of our report will thus consist in estimating the true parameters of our data from the results obtained. For this, we can note that even if the true values are not available, we can use the informations on the intervals to derive the likelihood of contribution. 
+The next step of our report will thus consists in estimating the true parameters of our data from the results obtained. For this, we can note that even if the true values are not available, we can use the information on the intervals to derive the likelihood contribution. 
 
 
 ## Optimization
 
 The likelihood contribution of the rounding data is :
-$$f_{round}(x, \theta) = \prod_{k=1}^{52} [F(start_k) - F(end_k)]^{number_k}$$
+$$f_{round}(x, \theta) = \prod_{k=1}^{52} [F(start_k, \theta) - F(end_k, \theta)]^{number_k}$$
 
 where for every of the 52 intervals : 
 
-- $F(start_k)$ is the cumulative distribution evaluates at the start of the interval k
+- $F(start_k)$ is the cumulative distribution of the bi-log-normal evaluates at the start of the interval k
 
-- $F(end_k)$ is the cumulative distribution evaluates at the end of the interval k
+- $F(end_k)$ is the cumulative distribution of the bi-log-normal evaluates at the end of the interval k
 
 - ${number_k}$ is the number of element in the interval k 
 
 So the negative log likelihood contribution is : 
-$$l_{round}(x, \theta) = - \sum_{k=1}^{52} {number_k} \times log[F(start_k) - F(end_k)]$$
+$$l_{round}(x, \theta) = - \sum_{k=1}^{52} {number_k} \times log[F(start_k, \theta) - F(end_k, \theta)]$$
 
 
 
@@ -254,7 +254,7 @@ ggplot()+
 
 ```
 
-Figure 3 shows that the optimized density is indeed more faithful to the density found during the exploration phase. Indeed, we can notice that the first bell of the density is now more pronounced and reaches the value of 2, just like during the first part.  
+Figure 3 shows that the optimized density is indeed more representative to the density found during the exploration phase. Indeed, we can notice that the first bell of the density is now more pronounced and reaches the value of 2, just like during the first part.  
 
 ## Parametric Bootstrap 
 
@@ -353,7 +353,7 @@ With 100 replications we obtained the p-value `r p_value`, which is not close to
 In conclusion, throughout this report, we have built a model around the hypothesis that the "snow particles" comes from a bi-log normal distribution. This assumption has been carefully checked in the last section. 
 The previous analysis allowed us to determine the most appropriate parameter values for first an approximation of the data and then the true data which ends to the following parameters : $\mu_1 =$ `r opti[1]`, $\mu_2 =$ `r opti[2]`, $\sigma_1 =$ `r opti[3]`, $\sigma_2 =$ `r opti[4]`, and $\tau =$ `r opti[5]`. 
 
-However, in this report we have essentially adopted a frequentist viewpoint. With more time, the analysis of a Bayesian point of view would have been an interesting point to add and compare with the results obtained.
+However, in this report we have essentially adopted a frequentist viewpoint. With more time, the analysis of a Bayesian point of view would have been an interesting point to add and compare with the results obtained. 
 
 
 
