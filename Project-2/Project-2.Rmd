@@ -24,7 +24,7 @@ In this perspective, we will therefore analyze the data set "2_online_shopping",
 
 The **goal** of this report is to find a model which tries to explain customer behavior on the e-commerce website and evaluate the prediction performance of our model.
 
-To this end, we will proceed in 3 parts. In the first one, we will explore and treat the data to understand some clients' behaviors and obtain some intuitions. Then in the second part, we will try to find an appropriate model for our model. This will lead us to the last part, the interpretation, and discussion of the model. 
+To this end, we will proceed in 3 parts. In the first one, we will explore and treat the data to understand some client's behaviors and obtain some intuitions. Then in the second part, we will try to find an appropriate model. This will lead us to the last part, the interpretation and discussion of the model. 
 
 ```{r, load data and rename the variable}
 # Download the Data
@@ -153,9 +153,9 @@ Data2$visitor_type <- as.factor(Data2$visitor_type)
 
 ```
 
-In this figure, we can already notice some habits of potential customers: they spend much more time on product pages than on administration and information. This may seem logical since they consult product pages much more than other things. 
+In this figure, we can already notice some habits of potential customers: they spend much more time on product pages than on administration and information ones. This may seem logical since they consult product pages much more than the others. 
 
-We can also observe that the number of "other visitor" is underrepresented in the data  as well as the number of value around a special day. Or some month where we are no observation like january or april. 
+We can also observe that the number of "other visitor" is underrepresented in the data  as well as the number of value around a special day. Or some month where we even have no observation like january or april. 
 
 To recall, we aim to explain the variable "Purchase" of the data set and the exact proportion of "TRUE" in our data is : `r sum(Data$purchase==TRUE)/ length(Data$purchase)`. 
 
@@ -192,7 +192,7 @@ So in our regression, we can expect that the `page_values` variable has an impac
 
 ### Special Day 
 
-Moreover, we can observe something similar with the `special_day` variable, as shown in Figure 3. Indeed, we can even see that when we are very close to a special day, every person, who enters the website, buys something.
+Moreover, we can observe something similar with the `special_day` variable, as shown in Figure 3. Indeed, we can even see that when we are very close to a special day, every person, who arrives on the website, buy something.
 
 ```{r, fig.align="center", fig.cap="Figure 2: Histograms for the non-zero `special_day` variable"}
 
@@ -272,12 +272,12 @@ AIC(model_entire6)
 anova(model_entire3, model_entire6, test="LRT")
 ```
 
-We begin with the full model (with every variable). It, therefore, appears that some variables don't add much to the model, i.e have a high p-value. These variables are: `browser` and `region`. We then immediately fit another model without them. This action is encouraged by the 0.6765 p-value obtained by the Likelihood Ration Test. We can also note that the variable `weekend` was not very significant neither with a p-value of 0.24. 
+We begin with the full model (with every variable). It, therefore, appears that some variables don't add much to the model, i.e have a high p-value. These variables are: `browser` and `region`. We then immediately fit another model without them. This action is encouraged by the 0.6765 p-value obtained by the Likelihood Ration Test. We can also note that the variable `weekend` is not very significant neither with a p-value of 0.24. 
 
-On this other side, it also emphasizes certain significant variables. One can find in particular the `page_values` (without surprise). It could then make sense to add an interaction between the average of page values and the number of product, informative, and administrative pages. And as we aim to explain the odds of purchase affected by date-related features it can also be interesting to also add an interaction between `page_values` and `month`, `weekend`, `special_day`. 
+On this other side, it also emphasizes certain significant variables. One can find in particular the `page_values` (without surprise). It could then make sense to add an interaction between the average of page values and the number of product, informative, and administrative pages consulted. And as we aim to explain the odds of purchase affected by date-related features it can also be interesting to also add an interaction between `page_values` and `month`, `weekend`, `special_day`. 
 Moreover, the residual plot could suggest allowing a quadratic dependence of the time spent on product pages, which turns out to be significant.
 
-By adding all these interactions and the quadratic term we can remark that the AIC value went from 6145.216 (when we already dropped the 4 variables) to 5741.143. 
+By adding all these interactions and the quadratic term we can remark that the AIC value went from 6145.216 (when we already dropped the 2 first variables) to 5741.143. 
 
 Moreover, even if the Anova table suggests that every variable is significant we can test another model where we drop the less significant one, i.e  `time_info_page`, `weekend`, and `operating_sys`. We indeed notice that the interaction between `page_values` and `weekend` which seems to be the less significant one. And hence obtain a 0.424 p-value by the Likelihood Ration Test. 
 
@@ -292,7 +292,7 @@ modell <- glm(purchase~. -browser -region - time_info_page - weekend - operating
 summary(modell)
 ```
 
-In the summary, some variables like special_day, which was significant in the anova table, don't appear this way in the summary. But as we mention in the exploration part, this may be due to the lack of data and so we decide to keep it in the model. Another one is `bounce_rate`, however removing it from the model increases the AIC, so we choose to leave it as well. 
+In the summary, some variables like `special_day`, which was significant in the anova table, don't appear this way in the summary. But as we mention in the exploration part, this may be due to the lack of data and so we decide to keep it in the model. Another one is `bounce_rate`, however removing it from the model increases the AIC, so we choose to keep it as well. 
 
 ## Residual Diagnostic 
 
@@ -357,7 +357,7 @@ $$P(Y=1 | X = X_n) = \frac{1}{1 + \exp(-z_n)}$$
 
 Hence the idea is therefore that negative coefficient will make decrease the probability of purchasing something if the feature corresponding is increasing. While in the other case, a positive coefficient will make increase the probability.
 
-However the precise interpretation depend on the variable, we have to distinguish the intercetp, from the numericale variables and the categorical ones. 
+However the precise interpretation depend on the variable, we have to distinguish the intercept, from the numerical variables and the categorical ones. 
 
 **The intercept**
 
@@ -373,9 +373,9 @@ $$z_n = X_n \beta = \beta_1 + X_{n,nap} \beta_{nap} + ... $$
 
 So if we take two different observation such that : $X_1 = (x_{1, nap}, ... , x_{1, time_prod})$ and $X_2 = (x_{1, nap} +1, ... , x_{1, time_prod})$. We obtain :
 
-* $\pi_1 =  P(Y=1 | X = X_1) $ leads to $\beta^T X_1 = \log(\frac{\pi_1}{1 - \pi_1})$
+- $\pi_1 =  P(Y=1 | X = X_1) $ leads to $\beta^T X_1 = \log(\frac{\pi_1}{1 - \pi_1})$
 
-* $\pi_2 =  P(Y=1 | X = X_2) $ leads to $\beta^T X_2 = \log(\frac{\pi_2}{1 - \pi_2})$
+- $\pi_2 =  P(Y=1 | X = X_2) $ leads to $\beta^T X_2 = \log(\frac{\pi_2}{1 - \pi_2})$
 
 And by subtracting we obtained : $\exp(\beta_{nap}) = \frac{\pi_1 (1 - \pi_2)}{\pi_2 (1 - \pi_1)}$ or $\log(\frac{\pi_2}{1 - \pi_2}) = \log(\frac{\pi_0}{1 - \pi_0}) + \beta_{nap}$ which leads to $\frac{\pi_2}{1 - \pi_2} = \frac{\pi_0}{1 - \pi_0} \exp(\beta_{nap})$. So as the coefficient of this feature is  0.07, we can conclude that the addition of one administration page is associated with a 7% increase in the odds of purchasing something (as $\exp(0.07) = 1.07$) holding all other predictors constant. 
 
@@ -393,9 +393,9 @@ For categorical variables, let's take for example the feature `traffic_type` :
 $$z_n = X_n \beta = \beta_1 + I_{(X_{n,tt}==2)} \beta_{tt2} + ... + I_{(X_{n,tt}==6)} \beta_{tt6}  +... $$
 In this example, the reference categorical is the "traffic type 1". And each coefficient represents the difference in log - odds of purchasing something compare to the odds's reference. We indeed have for instance : $X_1 = (tt1, x_{pv}... )$ and $X_2 = (tt2, x_{pv}... )$. We obtain :
 
-* $\pi_1 =  P(Y=1 | X = X_1) $ leads to $\beta^T X_1  = \log(\frac{\pi_1}{1 - \pi_1})$
+- $\pi_1 =  P(Y=1 | X = X_1) $ leads to $\beta^T X_1  = \log(\frac{\pi_1}{1 - \pi_1})$
 
-* $\pi_2 =  P(Y=1 | X = X_2) $ leads to $\beta^T X_2 = \log(\frac{\pi_2}{1 - \pi_2})$
+- $\pi_2 =  P(Y=1 | X = X_2) $ leads to $\beta^T X_2 = \log(\frac{\pi_2}{1 - \pi_2})$
 
 And then by subtracting : $$\beta_{tt2} = \log(\frac{\pi_2}{1 - \pi_2}) - \log(\frac{\pi_1}{1 - \pi_1})$$
 
@@ -403,7 +403,7 @@ And then by subtracting : $$\beta_{tt2} = \log(\frac{\pi_2}{1 - \pi_2}) - \log(\
 
 In conclusion, we can mention the fact that our final model makes sense, indeed knowing that we have explained how to interpret the coefficients, we can look at the summary with a new eye. We actually find back what we have noticed in the exploration part, i.e the more the average value of pages visited is high the more the probability of purchasing something is high. 
 
-Moreover, in the same idea the more time the customer spends looking at product pages, the more likely they are to buy. Or the more time he wastes on administrative pages, the less likely he is to purchase. 
+Moreover, in the same idea the more time the customer spends looking at product pages, the more likely they are to buy. Or the more time he wastes on administrative pages, the less likely he is to purchase something. 
 
 What is more surprising are the three coefficients of the model's interactions with the pages. Indeed, since they represent the sum of the values of the observed pages in each category (and on average), one would expect the coefficients to be positive. But we can assume that this interaction is intended to attenuate the large effect of the page values variable.   
 
