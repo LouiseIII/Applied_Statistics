@@ -24,7 +24,7 @@ In this perspective, we will therefore analyze the data set "2_online_shopping",
 
 The **goal** of this report is to find a model which tries to explain customer behavior on the e-commerce website and evaluate the prediction performance of our model.
 
-We introduce a logistic model that seeks to explain the fact that a customer will make a purchase or not, depending on the available variables. To this end, we will proceed in 3 parts. In the first one we will make a deeper description of the available data, then we will perform a model selection which will lead us to the final model. The third part will develop the diagnostic of our obtained model, which is followed by an interpretation. 
+To this end, we will proceed in 3 parts. In the first one, we will explore and treat the data to understand some clients' behaviors and obtain some intuitions. Then in the second part, we will try to find an appropriate model for our model. This will lead us to the last part, the interpretation, and discussion of the model. 
 
 ```{r, load data and rename the variable}
 # Download the Data
@@ -62,16 +62,16 @@ Data$traffic_type[Data$traffic_type == 13] <- 5
 
 ## Description of the Data Set
 
-Given the rapport subject, we can identify the variable of interest as the 'purchase' variable, a binary one, it takes value "TRUE" if a purchase has been made and "FALSE" otherwise. 
+Given the subject, we can identify the variable of interest as the 'purchase' variable, a binary one, it takes the value "TRUE" if a purchase has been made and "FALSE" otherwise. We therefore already understand that we will have to fit a logistic model, but let's first concentrate on the data set characteristics. 
 
-The customer behavior on the e-commerce website can intuitively be explained by many factors: the date (for instance if we approach Valentine's Day), the design of the website, the customer profile, ... 
+The customer behavior on the e-commerce website can intuitively be explained by many factors: the date (for instance if we approach Valentine's Day), the design of the website, and the customer profile, ... 
 
 This is the reason why this data set, which aims to be as representative as possible, regroups a lot of features, 17 in total with a large diversity. As numerical variables we have : 
 
 * Administrative (`n_admin_page`) - the number of administrative-type pages that the user visited
 * Administrative Duration (`time_page_page`) - the time spent on administrative pages 
 * Informational (`n_info_page`) - the number of informational-type pages visited 
-* Informational Duration (`time_product_page`)- the time spent on informational pages 
+* Informational Duration (`time_product_page`) - the time spent on informational pages 
 * Product Related (`n_product_page`) - the number of product - related - type pages visited 
 * Product Related Duration (`time_product_page`) - the time spent on product - related - type pages 
 
@@ -84,13 +84,13 @@ This is the reason why this data set, which aims to be as representative as poss
 And as categorical variables : 
 
 * Month (`month`) - which month the session took place (one level for each month)
-* Weekend (`weekend`) - binary indocator of wheter the session took place durinng a weekend 
+* Weekend (`weekend`) - binary indicator of whether the session took place during a weekend 
 
 * Operating Systems (`operating_sys`) - operating systems of the users (with four levels : "1", "2" and "3" the most popular one, and "4" which represents the others)
 * Browser (`browser`) - web browsers of the users (with three levels : "1" and "2" the most popular one, and "3" which represents the others)
 * Region (`region`) - geographic region in which the user is located (one number for each region)
-* Traffic Type (`traffic_type`) - where from the user arrived at the site ()
-* Visitor Type (`visitor_type`) - with 3 levels, 
+* Traffic Type (`traffic_type`) - where from the user arrived at the site (there is 6 different arrived possible and the last one represent the "others" category)
+* Visitor Type (`visitor_type`) - with 3 levels (new visitor, returning visitor and the other category)
 
 Figure 1 shows the data, where the following variables have been log - transformed : `n_product_page`, `page_values`, `time_admin_page`, `time_info_page`, and  `time_product_page`. Indeed, without this transformation, one could wrongly assumed that most of the customers didn't have spend time on the information page; while there is only `r sum(Data$time_product_page==0)/length(Data$time_product_page)*100`% who didn't. This impression is due to the fact that there is some very high value (like `r max(Data$time_product_page)`) which make the others insignificant.  
 It is the same idea for the time spend on informative and administration pages even if the proportion of people who didn't is more significant (`r sum(Data$time_info_page==0)/length(Data$time_info_page)*100`% and `r sum(Data$time_admin_page==0)/length(Data$time_admin_page)*100`% respectively).
@@ -107,7 +107,6 @@ Data2$time_product_page <- log(Data2$time_product_page +1)
 ```
 
 ```{r}
-
 # month=as.numeric(month), 
 Data3 <- Data
 Data3$month[Data3$month == "Jan"] <- 1
@@ -154,7 +153,8 @@ Data2$visitor_type <- as.factor(Data2$visitor_type)
 
 ```
 
-In this figure, we can also observe that the number of "other visitor" is underrepresented in the data  as well as the number of value around a special day. 
+In this figure, we can also observe that the number of "other visitor" is underrepresented in the data  as well as the number of value around a special day. Or some month where we are no observation like january or april. 
+
 To recall, we aim to explain the variable "Purchase" of the data set and the exact proportion of "TRUE" in our data is : `r sum(Data$purchase==TRUE)/ length(Data$purchase)`. 
 
 ## Exploration of the Data
@@ -163,7 +163,7 @@ In this part, we present some interesting results that we observed during the ex
 
 ### Page values 
 
-The first one is about the variable `page_values`. One can remark that most of the observations in our data set have a zero average. But intuitively the more the average of page value of pages visited is high the more the client will be inclined to buy. And if we focus the analyze on the non-zero average observations (which represent `r sum(Data$page_values !=0)/length(Data$page_values)*100`%), we can see that it is what it happen in the Figure 2.
+The first one is about the variable `page_values`. One can remark that most of the observations in our data set have a zero average. But intuitively the more the average page value of pages visited is high the more the client will be inclined to buy. And if we focus the analysis on the non-zero average observations (which represent `r sum(Data$page_values !=0)/length(Data$page_values)*100`%), we can see that it is what happens in Figure 2.
 
 ```{r, fig.align="center", fig.cap="Figure 2: Histograms for the non-zero `page_values` variable with no transformation on the left and log-transformation on the rigth"}
 
@@ -181,16 +181,16 @@ plot_grid(g1, g2, ncol = 2, nrow = 1)
 
 ```
 
-On theses two histograms we can also see the effects of the log-transformation. Indeed, the log-transformation reduces the skewness of our original data : large values are less far apart while small values are further apart.
+On these two histograms, we can also see the effects of the log transformation. Indeed, the log transformation reduces the skewness of our original data: large values are less far apart while small values are farther apart.
 
-But we most interesting thing that we remark in this graphs is that the proportion of "TRUE" purchase is very high in general and especially in very high average. 
+But we most interesting thing that we remark on in this graph is that the proportion of "TRUE" purchases is very high in general and especially in very high averages. 
 If we take a look at the numbers we observe that there is actually `r sum((Data$page_values !=0) * (Data$purchase)) / sum(Data$purchase)*100`% of the client who purchased something have consulting positive page values. 
 
-So in our regression we can expect that the `page_values` variable has an impact, or explain the `purchase` variable.
+So in our regression, we can expect that the `page_values` variable has an impact, or explain the `purchase` variable.
 
 ### Special Day 
 
-Moreover we can observe something similar with the `special_day` variable, as shown in Figure 3. Indeed, we can even seen that when we are very close from a special day, every persons, who enter in the website, buys something.
+Moreover, we can observe something similar with the `special_day` variable, as shown in Figure 3. Indeed, we can even see that when we are very close to a special day, every person, who enters the website, buys something.
 
 ```{r, fig.align="center", fig.cap="Figure 2: Histograms for the non-zero `special_day` variable"}
 
@@ -201,12 +201,12 @@ ggplot(Data[c(Data$special_day>0),])+
 
 ```
 
-This might encourages us to conclude as in the previous part that the `special_day`variable will have a big impact on the `purchase` variable. However we have to be careful, because the "zero special day" represents `r sum(Data$special_day !=0)/length(Data$special_day)*100`% of our observations, which is very little. 
+This might encourage us to conclude as in the previous part, that the `special_day` variable will have a big impact on the `purchase` variable. However, we have to be careful, because the "zero special days" represents `r sum(Data$special_day !=0)/length(Data$special_day)*100`% of our observations, which is very little. 
 
 
 ## Logistic Regression 
 
-### 1) Theory Part
+### Few Words on the Theory
 
 As mention before, the variable of interest is a binary variable, and the principal method to fit this kind of variables is to make a logistic regression. Indeed, it aims to determine the probability of a certain event occurring (in our case the "purchase event") based on the characteristic of several independent variables. 
 
@@ -227,7 +227,7 @@ The $\beta_k$ are called the logit coefficients and reflect the size of the infl
 
 They will be estimated by maximizing the likelihood.
 
-### 2) Model Selection
+### Model Selection
 ```{r}
 Data_final <- Data
 Data_final$n_product_page <- log(Data_final$n_product_page +1)
@@ -268,14 +268,16 @@ AIC(model_entire5)
 anova(model_entire3, model_entire5, test="LRT")
 ```
 
-We begin with the full model (with every variables). It therefore appear that some variables don't add much to the model, i.e have a high p-value. Theses variables are : `browser`, `region`, `weekend`, and `operating_sys`. We then immediately fit another model without them. This action is encouraging by the 0.525 p-value obtain by the Chi-square test.
+We begin with the full model (with every variable). It, therefore, appears that some variables don't add much to the model, i.e have a high p-value. These variables are: `browser`, `region`, `weekend`, and `operating_sys`. We then immediately fit another model without them. This action is encouraged by the 0.525 p-value obtained by the Likelihood Ration Test. 
 
-However it also emphasizes certain significant variables. One can find in particular the `page_values` (without surprise). It could then make sens to add an interaction between the average of page values and the number of product, informative, and administrative pages. 
-Moreover the residual plot could suggest to allow a quadratic dependence of the time spent on product pages, which turns out to be significant.
+However, it also emphasizes certain significant variables. One can find in particular the `page_values` (without surprise). It could then make sense to add an interaction between the average of page values and the number of product, informative, and administrative pages. 
+Moreover, the residual plot could suggest allowing a quadratic dependence of the time spent on product pages, which turns out to be significant.
 
-By adding this interactions and the quadratic term we can remark that the AIC value went from 6142.724 (when we already drop the 4 variables) to 5890.992. 
+By adding these interactions and the quadratic term we can remark that the AIC value went from 6142.724 (when we already dropped the 4 variables) to 5890.992. 
 
-Moreover even if the anova table suggest that every variables is significant we can test another model where we drop the less significant one, i.e ` n_info_page`,  `time_info_page`, and `special_day`. And hence obtain a 0.91 p-value by the Chi-square test. 
+Moreover, even if the Anova table suggests that every variable is significant we can test another model where we drop the less significant one, i.e ` n_info_page`,  `time_info_page`, and `special_day`. And hence obtain a 0.91 p-value by the Likelihood Ration Test. 
+
+[Note : All the reasoning is included in the code, which is just not executed]]
 
 The summary of our final model is then : 
 
@@ -305,9 +307,7 @@ Data_final%>%
   geom_smooth()
 ```
 
-As the response variable is binary, we can see that as expected residual are organized in two clouds in every plots. 
-
-**Parler de la cook distannce**
+As the response variable is binary, we can see that as expected residual are organized in two clouds in every plots. We do not observe anything alarming here, moreover by inspecting the cook distance of the observations, we confirm that none has a very high value which is good news. 
 
 ## AUC Curve 
 
@@ -327,11 +327,11 @@ AUC_eval <- function(gmodel,Data){
 }
 ```
 
-One important notion of a logistic regression is the ROC curve, which is the function of the true positive rate against the false positive rate. Hence the more the curve is high the more the model is a better representation. Then one way to measure the quality of the test is to calculate the area under the curve. It is a number between 0.5 and 1, and we wish it to be very close from 1. 
+One important notion of logistic regression is the ROC curve, which is the function of the true positive rate against the false positive rate. Hence the more the curve is high the more the model is a better representation. Then one way to measure the quality of the test is to calculate the area under the curve. It is a number between 0.5 and 1, and we wish it to be very close to 1. 
 
-To calculate it we use the available function, and obtain for our final model : `r AUC_eval(modell, Data_final)`. This is higher than the Benchmark AUC (0.895). 
+To calculate it we use the available function, and obtain for our final model: `r AUC_eval(modell, Data_final)`. This is higher than the Benchmark AUC (0.895). 
 
-We now summary all our result of our model in the followinng table. 
+We now summarize all the results of our model in the following table. 
 
 ```{r}
 library(knitr)
@@ -395,13 +395,13 @@ And then by subtracting : $$\beta_{tt2} = \log(\frac{\pi_2}{1 - \pi_2}) - \log(\
 
 ## Discussion
 
-Before to conclude, we can mention the fact that our final model make sens, indeed know that we have explain how to interpret the coefficients, we can look at the summary with a new eye. We actually find back what we have notice in the exploration part, i.e the more the average of value of page visited is high the more the probability of purchasing something is high. 
+In conclusion, we can mention the fact that our final model makes sense, indeed knowing that we have explained how to interpret the coefficients, we can look at the summary with a new eye. We actually find back what we have noticed in the exploration part, i.e the more the average value of pages visited is high the more the probability of purchasing something is high. 
 
 Moreover, in the same idea the more time the customer spends looking at product pages, the more likely they are to buy. Or the more time he wastes on administrative pages, the less likely he is to purchase. 
 
-What are more surprising are the three coefficients of the model interactions. Indeed, since they represent the sum of the values of the observed pages in each category (and in average), one would expect the coefficients to be positive.  
+What is more surprising are the three coefficients of the model's interactions. Indeed, since they represent the sum of the values of the observed pages in each category (and on average), one would expect the coefficients to be positive. But we can assume that this interaction is intended to attenuate the large effect of the page values variable.   
 
-Nevertheless, we have to say that we have in fact explored very few interactions among all the possible ones. With more time it would surely have been possible to find a more accurate model (even if all models are wrong). 
+Nevertheless, we have to say that we have in fact explored very few interactions among all the possible ones. With more time it would surely have been possible to find a more accurate model (even if all models are wrong).  
 
 
 
