@@ -153,7 +153,9 @@ Data2$visitor_type <- as.factor(Data2$visitor_type)
 
 ```
 
-In this figure, we can also observe that the number of "other visitor" is underrepresented in the data  as well as the number of value around a special day. Or some month where we are no observation like january or april. 
+In this figure, we can already notice some habits of potential customers: they spend much more time on product pages than on administration and information. This may seem logical since they consult product pages much more than other things. 
+
+We can also observe that the number of "other visitor" is underrepresented in the data  as well as the number of value around a special day. Or some month where we are no observation like january or april. 
 
 To recall, we aim to explain the variable "Purchase" of the data set and the exact proportion of "TRUE" in our data is : `r sum(Data$purchase==TRUE)/ length(Data$purchase)`. 
 
@@ -246,7 +248,7 @@ AIC(model_full)
 anova(model_full, test="LRT")
 
 # Without obvious variables 
-model_entire2 <- glm(purchase~. -browser -region -operating_sys -weekend , data=Data_final, family="binomial") 
+model_entire2 <- glm(purchase~. -browser -region , data=Data_final, family="binomial") 
 print("AIC Without obvious variables : ")
 AIC(model_entire2)
 anova(model_entire2, test="LRT")
@@ -255,38 +257,42 @@ print("comparaison : ")
 anova(model_full, model_entire2, test="LRT")
 
 # Add some interactions
-model_entire3 <- glm(purchase~. -browser -region -operating_sys -weekend + I(time_product_page^2) + page_values * (n_product_page + n_admin_page + n_info_page), data=Data_final, family="binomial") 
+model_entire3 <- glm(purchase~. -browser -region + I(time_product_page^2) + page_values * (n_product_page + n_admin_page + n_info_page) + page_values * month + page_values * weekend + page_values * special_day, data=Data_final, family="binomial") 
 print("AIC With some interactions : ")
 AIC(model_entire3) # Less than the previous one 
+anova(model_entire3, test="LRT")
 
-# test
+# test2
 print("test")
-model_entire5 <- glm(purchase~. -browser -region -operating_sys -weekend -n_info_page - time_info_page - special_day + I(time_product_page^2) + page_values * (n_product_page + n_admin_page + n_info_page), data=Data_final, family="binomial") 
+model_entire6 <- glm(purchase~. -browser -region - time_info_page - weekend - operating_sys + I(time_product_page^2) + page_values * (n_product_page + n_admin_page + n_info_page) + month*page_values +page_values*special_day, data=Data_final, family="binomial") 
+anova(model_entire6, test="LRT")
 #summary(model_entire)
 #AUC_eval(model_entire5, Data_final)
-AIC(model_entire5)
-anova(model_entire3, model_entire5, test="LRT")
+AIC(model_entire6)
+anova(model_entire3, model_entire6, test="LRT")
 ```
 
-We begin with the full model (with every variable). It, therefore, appears that some variables don't add much to the model, i.e have a high p-value. These variables are: `browser`, `region`, `weekend`, and `operating_sys`. We then immediately fit another model without them. This action is encouraged by the 0.525 p-value obtained by the Likelihood Ration Test. 
+We begin with the full model (with every variable). It, therefore, appears that some variables don't add much to the model, i.e have a high p-value. These variables are: `browser` and `region`. We then immediately fit another model without them. This action is encouraged by the 0.6765 p-value obtained by the Likelihood Ration Test. We can also note that the variable `weekend` was not very significant neither with a p-value of 0.24. 
 
-However, it also emphasizes certain significant variables. One can find in particular the `page_values` (without surprise). It could then make sense to add an interaction between the average of page values and the number of product, informative, and administrative pages. 
+On this other side, it also emphasizes certain significant variables. One can find in particular the `page_values` (without surprise). It could then make sense to add an interaction between the average of page values and the number of product, informative, and administrative pages. And as we aim to explain the odds of purchase affected by date-related features it can also be interesting to also add an interaction between `page_values` and `month`, `weekend`, `special_day`. 
 Moreover, the residual plot could suggest allowing a quadratic dependence of the time spent on product pages, which turns out to be significant.
 
-By adding these interactions and the quadratic term we can remark that the AIC value went from 6142.724 (when we already dropped the 4 variables) to 5890.992. 
+By adding all these interactions and the quadratic term we can remark that the AIC value went from 6145.216 (when we already dropped the 4 variables) to 5741.143. 
 
-Moreover, even if the Anova table suggests that every variable is significant we can test another model where we drop the less significant one, i.e ` n_info_page`,  `time_info_page`, and `special_day`. And hence obtain a 0.91 p-value by the Likelihood Ration Test. 
+Moreover, even if the Anova table suggests that every variable is significant we can test another model where we drop the less significant one, i.e  `time_info_page`, `weekend`, and `operating_sys`. We indeed notice that the interaction between `page_values` and `weekend` which seems to be the less significant one. And hence obtain a 0.424 p-value by the Likelihood Ration Test. 
 
-[Note : All the reasoning is included in the code, which is just not executed]]
+[Note : All the reasoning is included in the code, which is just not executed]
 
 The summary of our final model is then : 
 
 ```{r}
 
-modell <- glm(purchase~. -browser -region -operating_sys -weekend -n_info_page - time_info_page - special_day + I(time_product_page^2) + page_values * (n_product_page + n_admin_page + n_info_page), data=Data_final, family="binomial") 
+modell <- glm(purchase~. -browser -region - time_info_page - weekend - operating_sys + I(time_product_page^2) + page_values * (n_product_page + n_admin_page + n_info_page) + month*page_values +page_values*special_day, data=Data_final, family="binomial") 
 
 summary(modell)
 ```
+
+In the summary, some variables like special_day, which was significant in the anova table, don't appear this way in the summary. But as we mention in the exploration part, this may be due to the lack of data and so we decide to keep it in the model. Another one is `bounce_rate`, however removing it from the model increases the AIC, so we choose to leave it as well. 
 
 ## Residual Diagnostic 
 
@@ -378,7 +384,7 @@ And by subtracting we obtained : $\exp(\beta_{nap}) = \frac{\pi_1 (1 - \pi_2)}{\
 But for some variables like `page_values` we did a log transformation, and we have to take it into account in our interpretation : 
 
 $$z_n = X_n \beta = \beta_1 + X_{n,nap} \beta_{nap} + \log(X_{n,pv} +1) \beta_{pv} +  ... $$
-And so a one unit increase in $\log(X_{n,pv} +1)$ corresponds to a multiplication of the odds by 7.77 (as the coefficient of the page values is 2.05 and $\exp(2.05) = 7.77$). 
+And so a one unit increase in $\log(X_{n,pv} +1)$ corresponds to a multiplication of the odds by 6.05 (as the coefficient of the page values is 1.8 and $\exp(1.8) = 6.05$). 
 
 **Categorical Variables**
 
@@ -399,7 +405,11 @@ In conclusion, we can mention the fact that our final model makes sense, indeed 
 
 Moreover, in the same idea the more time the customer spends looking at product pages, the more likely they are to buy. Or the more time he wastes on administrative pages, the less likely he is to purchase. 
 
-What is more surprising are the three coefficients of the model's interactions. Indeed, since they represent the sum of the values of the observed pages in each category (and on average), one would expect the coefficients to be positive. But we can assume that this interaction is intended to attenuate the large effect of the page values variable.   
+What is more surprising are the three coefficients of the model's interactions with the pages. Indeed, since they represent the sum of the values of the observed pages in each category (and on average), one would expect the coefficients to be positive. But we can assume that this interaction is intended to attenuate the large effect of the page values variable.   
+
+Concerning the data, we can notice that the month of reference is August (the first one in alphabetical order knowing that January and April are not represented). Thus we can see that the months that have a higher positive impact on sales compared to this month are July, September and November. And these would also be the months where people on average consult pages of lower value. 
+
+Furthermore, it is not surprising to learn that the coefficient of special day is positive, so customers are more likely to buy when a holiday arrives. 
 
 Nevertheless, we have to say that we have in fact explored very few interactions among all the possible ones. With more time it would surely have been possible to find a more accurate model (even if all models are wrong).  
 
