@@ -1,0 +1,624 @@
+---
+title: "rough_work"
+output: html_document
+date: "2023-03-13"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning=FALSE)
+library(ggplot2)
+```
+
+## R Markdown
+
+```{r dowload data}
+load("~/Google Drive/EPFL/Applied Stat/StatApp-314577/Project-2/2_online_shopping.RData")
+path_to_data <- "~/Google Drive/EPFL/Applied Stat/StatApp-314577/Project-2/"
+data_file <- "2_online_shopping.RData"
+load(paste(path_to_data, data_file, sep=""))
+```
+
+## Plot every variables 
+
+
+```{r}
+names(Data)[1:6] <- c("n_admin_page", "time_admin_page", "n_info_page", "time_info_page",
+                      "n_product_page", "time_product_page")
+names(Data)[c(10:11, 17)] <- c("special_day", "month", "weekend")
+names(Data)[7:9] <- c("bounce_rates", "exit_rates", "page_values")
+names(Data)[12:16] <- c("operating_sys", "browser", "region", "traffic_type", "visitor_type")
+names(Data)[18] <- "purchase"
+
+# Put some in Factor 
+Data$operating_sys <- as.factor(Data$operating_sys)
+Data$browser <- as.factor(Data$browser)
+Data$region <- as.factor(Data$region)
+Data$traffic_type <- as.factor(Data$traffic_type)
+
+Data_final <- Data
+```
+
+```{r, Administrative}
+  #1) Administrative
+ggplot(Data)+
+  geom_histogram(aes(x=n_admin_page, color=purchase))
+
+ggplot(data=Data)+
+  geom_point(aes(x=time_admin_page, y=purchase))
+
+ggplot(Data)+
+  geom_point(aes(x=time_admin_page, y=n_admin_page, color=purchase))
+
+for (i in 1:27){
+  print(sum((Data$n_admin_page==i)*Data$purchase)/sum(Data$n_admin_page==i))
+}
+```
+
+```{r, Informative}
+ggplot(Data)+
+  geom_point(aes(x=time_info_page, y=n_info_page, color=purchase))
+
+Data2 <- Data[c(Data$n_info_page<10),]
+
+ggplot(Data2)+
+  geom_histogram(aes(x=n_info_page, color=purchase))
+```
+
+```{r, Product}
+ggplot(Data)+
+  geom_histogram(aes(x=n_product_page, color=purchase))
+
+ggplot(Data)+
+  geom_point(aes(x=time_product_page, y=n_product_page, color=purchase))
+```
+
+```{r, month}
+ggplot(Data)+
+  geom_histogram(aes(x=month, color=purchase), stat="count")
+
+ggplot(Data)+
+  geom_histogram(aes(x=weekend, color=purchase), stat="count")
+
+
+ggplot(Data[c(Data$special_day>0),])+
+  geom_histogram(aes(x=special_day, color=weekend))+
+  scale_colour_manual(values = c("plum3", "paleturquoise3"))+
+  theme_minimal()
+```
+
+```{r}
+ggplot(Data)+
+  geom_point(aes(x=bounce_rates, y=purchase))
+
+ggplot(Data)+
+  geom_histogram(aes(x=bounce_rates, color=purchase))
+
+ggplot(Data)+
+  geom_point(aes(x=exit_rates, y=purchase))
+
+ggplot(Data)+
+  geom_point(aes(x=bounce_rates, y=exit_rates, color=purchase))
+
+ggplot(Data)+
+  geom_point(aes(x=page_values, y=purchase))
+
+ggplot(Data)+
+  geom_point(aes(x=page_values, y=bounce_rates, color=purchase))
+```
+
+```{r}
+
+ggplot(Data)+
+  geom_histogram(aes(x=operating_sys, color=purchase), stat="count")
+
+index <- c(which(Data$operating_sys==4), 
+          which(Data$operating_sys==5),
+          which(Data$operating_sys==6),
+          which(Data$operating_sys==7),
+          which(Data$operating_sys==8))
+Data$operating_sys[index]=4
+
+ggplot(Data)+
+  geom_histogram(aes(x=browser, color=purchase), stat="count")
+
+index <- c(which(Data$browser==3), 
+           which(Data$browser==4), 
+           which(Data$browser==5), 
+           which(Data$browser==6), 
+           which(Data$browser==7), 
+           which(Data$browser==8), 
+           which(Data$browser==9), 
+           which(Data$browser==10), 
+           which(Data$browser==11), 
+           which(Data$browser==12), 
+           which(Data$browser==13))
+Data$browser[index]=3
+
+  
+ggplot(Data)+
+  geom_histogram(aes(x=region, color=purchase), stat="count")
+
+ggplot(Data)+
+  geom_histogram(aes(x=traffic_type, color=purchase), stat="count")
+
+ggplot(Data)+
+  geom_histogram(aes(x=visitor_type, color=purchase), stat="count")
+
+```
+
+```{r}
+Data$traffic_type[Data$traffic_type %in% c(5:12, 14:20)] <- 6
+Data$traffic_type[Data$traffic_type == 13] <- 5
+
+ggplot(Data)+
+  geom_histogram(aes(x=traffic_type, color=purchase), stat="count")
+```
+
+What we can already observe is that there is a large diversity of variables. Indeed some of them are quantitative like "Administrative" which represents a number of pages. Whereas others are qualitative, and in this category we can distinguish the ordinal variables, for instance the "Special Day" from nominal variables as the "region".
+
+This last category retain particularly our attention because we have to it in factor. Indeed the number of the region is just informative, the region number 4 don't must be understand as 2 more important than the region 2. That why we put into factor the following variables : "Browser", "Month", "Operating systems", "Region", "Visitor Type" and "Weekend". 
+
+#Changement of scales (log transformation)
+```{r}
+ggplot(Data)+
+  geom_histogram(aes(x=time_product_page, color=purchase))
+
+ggplot(Data)+
+  geom_histogram(aes(x=log(time_product_page+1), color=purchase))
+
+```
+
+```{r}
+ggplot(Data)+
+  geom_histogram(aes(x=time_info_page, color=purchase))
+
+ggplot(Data)+
+  geom_histogram(aes(x=log(time_info_page+1), color=purchase))
+
+```
+
+```{r}
+ggplot(Data)+
+  geom_histogram(aes(x=time_admin_page, color=purchase))
+
+ggplot(Data)+
+  geom_histogram(aes(x=log(time_admin_page+1), color=purchase))
+
+```
+
+```{r}
+ggplot(Data)+
+  geom_histogram(aes(x=page_values, color=purchase))
+
+ggplot(Data)+
+  geom_histogram(aes(x=log(page_values+1), color=purchase))
+
+g1 <- ggplot(Data[which(Data$page_values!=0),])+
+  geom_histogram(aes(x=page_values, color=purchase))+
+  theme_minimal()+
+  scale_colour_manual(values = c("plum3", "paleturquoise3"))
+
+g2 <- ggplot(Data[which(Data$page_values!=0),])+
+  geom_histogram(aes(x=log(page_values+1), color=purchase))+
+  scale_colour_manual(values = c("plum3", "paleturquoise3"))+
+  theme_minimal()
+
+library(cowplot)
+plot_grid(g1, g2, ncol = 2, nrow = 1)
+
+```
+
+```{r}
+ggplot(Data)+
+  geom_histogram(aes(x=n_product_page, color=purchase))
+
+ggplot(Data)+
+  geom_histogram(aes(x=log(n_product_page+1), color=purchase))
+
+```
+
+
+```{r}
+ggplot(Data)+
+  geom_histogram(aes(x=bounce_rates, color=purchase))
+
+ggplot(Data)+
+  geom_histogram(aes(x=log(bounce_rates+1), color=purchase))
+```
+
+```{r}
+ggplot(Data)+
+  geom_histogram(aes(x=exit_rates, color=purchase))
+
+ggplot(Data)+
+  geom_histogram(aes(x=log(exit_rates+1), color=purchase))
+```
+
+
+```{r}
+ggplot(Data)+
+  geom_histogram(aes(x=n_admin_page, color=purchase))
+
+ggplot(Data)+
+  geom_histogram(aes(x=log(n_admin_page+1), color=purchase))
+```
+
+```{r}
+ggplot(Data)+
+  geom_histogram(aes(x=n_info_page, color=purchase))
+
+ggplot(Data)+
+  geom_histogram(aes(x=log(n_info_page+1), color=purchase))
+```
+## Exploration of the Data
+
+Before to fit any model, we get familiar with the data, this way we will have a better understanding of what we expect by fitting a model. And maybe detect some correlations.
+
+### Operating Systems 
+
+In this data, 8 different operating systems are represented. However as we can observe in the following figure 3 of them regroup actually the majority of the customers. Indeed, `r (sum(Data$operating_sys == 1) + sum(Data$operating_sys == 2) + sum(Data$operating_sys == 3))/length(Data$operating_sys) * 100` % of the customers have the system 1, 2 or 3. 
+
+We therefore have very few representations of the five last systems, which will lead our regression with a lot of coefficients (which aren't very representative). One idea can be then to group the 5 last systems into one unique, which will represent the "other" category.  
+
+```{r}
+g1 <- ggplot(Data)+
+  geom_histogram(aes(x=operating_sys, color=purchase), stat="count")
+```
+
+```{r, eval=FALSE}
+
+Data$operating_sys[Data$operating_sys %in% c(4, 5, 6, 7, 8)] <- 4
+
+g2 <- ggplot(Data)+
+  geom_histogram(aes(x=operating_sys, color=purchase), stat="count")
+
+plot_grid(g1, g2, labels=c("A", "B"), ncol = 2, nrow = 1)
+```
+
+In the exact same idea we can group the eleven last category of the "browser" variable.
+
+```{r, eval=FALSE}
+#ggplot(Data)+
+#  geom_histogram(aes(x=browser, color=purchase), stat="count")
+
+Data$browser[Data$browser %in% 3:13] <- 3
+
+#ggplot(Data)+
+#  geom_histogram(aes(x=browser, color=purchase), stat="count")
+```
+
+```{r}
+Data_final$operating_sys[Data_final$operating_sys %in% c(4, 5, 6, 7, 8)] <- 4
+
+Data_final$browser[Data_final$browser %in% 3:13] <- 3
+
+Data_final$traffic_type[Data_final$traffic_type %in% c(5:12, 14:20)] <- 6
+Data_final$traffic_type[Data_final$traffic_type == 13] <- 5
+
+Data_final$n_product_page <- log(Data_final$n_product_page +1)
+Data_final$page_values <- log(Data_final$page_values+1)
+Data_final$time_admin_page <- log(Data_final$time_admin_page +1)
+Data_final$time_info_page <- log(Data_final$time_info_page +1)
+Data_final$time_product_page <- log(Data_final$time_product_page +1)
+```
+
+---
+
+#Regression 
+
+
+```{r, begin of the regression}
+model_entire1 <- glm(purchase~., data=Data_final, family="binomial")
+plot(model_entire1)
+```
+
+### Regression 1
+```{r}
+library(tidyverse)
+
+model_full <- glm(purchase~., data=Data_final, family="binomial")
+#plot(model_entire)
+
+Data_final%>%
+ mutate(res=resid(model_full), operating_sys=as.numeric(operating_sys),
+        browser=as.numeric(browser),
+        region=as.numeric(region),
+        traffic_type=as.numeric(traffic_type),
+         weekend=as.numeric(weekend), 
+        visitor_type = as.numeric(visitor_type),
+        month = as.numeric(month))%>% pivot_longer(-res)%>%
+  ggplot(aes(y=res, x=value))+
+  facet_wrap(~ name, scales="free")+
+  geom_point()+
+  geom_smooth()
+
+```
+
+```{r}
+AIC(model_full)
+summary(model_full)
+AUC_eval(model_full, Data_final)
+anova(model_full, test="LRT")
+```
+
+
+
+### Regression 2
+
+```{r, eval=FALSE}
+
+## After calling the stepAIC function we obtain : 
+glm(formula = purchase ~ n_info_page + n_product_page + time_product_page + 
+    exit_rates + page_values + month + operating_sys + traffic_type + 
+    visitor_type, family = "binomial", data = Data)
+
+```
+
+```{r}
+model_entire2 <- glm(purchase~. -browser -region -operating_sys -weekend , data=Data_final, family="binomial") # I(time_product_page^2)
+summary(model_entire2)
+AUC_eval(model_entire2, Data_final)
+AIC(model_entire2)
+```
+
+```{r}
+model_entire2 <- glm(purchase~. - time_info_page -special_day -browser -region -operating_sys -weekend , data=Data_final, family="binomial") # I(time_product_page^2)
+summary(model_entire2)
+AUC_eval(model_entire2, Data_final)
+AIC(model_entire2)
+```
+
+```{r}
+anova(model_full, test="LRT")
+anova(model_entire2, test="LRT")
+anova(model_full, model_entire2, test="LRT")
+```
+
+```{r}
+model_entire3 <- glm(purchase~. -browser -region -operating_sys -weekend + I(time_product_page^2) + page_values * (n_product_page + n_admin_page + n_info_page), data=Data_final, family="binomial") 
+summary(model_entire3)
+AUC_eval(model_entire3, Data_final)
+AIC(model_entire3)
+```
+
+```{r}
+anova(model_entire3, test="LRT")
+anova(model_entire2, model_entire3, test="LRT")
+```
+```{r}
+model_entire4 <- glm(purchase~. -browser -region -operating_sys -weekend + I(time_product_page^2) + page_values * (n_product_page + n_admin_page), data=Data_final, family="binomial") 
+#summary(model_entire)
+AUC_eval(model_entire4, Data_final)
+AIC(model_entire4)
+```
+
+```{r}
+#anova(model_entire4, test="LRT")
+anova(model_entire3, model_entire4, test="LRT")
+Anova(model_entire4, )
+```
+
+```{r}
+model_entire5 <- glm(purchase~. -browser -region -operating_sys -weekend -n_info_page - time_info_page - special_day + I(time_product_page^2) + page_values * (n_product_page + n_admin_page + n_info_page), data=Data_final, family="binomial") 
+#summary(model_entire)
+AUC_eval(model_entire5, Data_final)
+AIC(model_entire5)
+```
+
+
+
+```{r}
+
+model_entire4 <- glm(purchase~n_admin_page + time_admin_page + n_info_page  + 
+    n_product_page + time_product_page  + exit_rates + 
+    page_values +  month  + 
+     traffic_type + visitor_type + I(time_product_page^2) + page_values * n_product_page + page_values * n_admin_page + n_info_page * page_values, data=Data_final, family="binomial") 
+
+summary(model_entire4)
+AUC_eval(model_entire4, Data_final)
+AIC(model_entire4)
+
+```
+
+```{r}
+
+test <- glm(purchase~n_admin_page + time_admin_page + n_info_page  + 
+    n_product_page + time_product_page  + exit_rates + 
+    page_values +  month  + bounce_rates*(n_product_page + n_info_page + n_admin_page)+exit_rates*(n_product_page + n_info_page + n_admin_page)+
+     traffic_type + visitor_type + I(time_product_page^2) + page_values * n_product_page + page_values * n_admin_page + n_info_page * page_values, data=Data_final, family="binomial") 
+
+summary(test)
+anova(test, test="Chisq")
+AUC_eval(test, Data_final)
+AIC(test)
+
+```
+
+```{r}
+
+test2 <- glm(purchase~n_admin_page + time_admin_page + n_info_page  + 
+    n_product_page + time_product_page  + exit_rates + 
+    page_values +  month  +exit_rates*n_product_page +
+     traffic_type + visitor_type + I(time_product_page^2) + page_values * n_product_page + page_values * n_admin_page + n_info_page * page_values, data=Data_final, family="binomial") 
+
+summary(test2)
+anova(test2, test="Chisq")
+AUC_eval(test2, Data_final)
+AIC(test2)
+
+```
+
+
+```{r}
+Data_final%>%
+ mutate(res=resid(model_entire4), operating_sys=as.numeric(operating_sys),
+        browser=as.numeric(browser),
+        region=as.numeric(region),
+        traffic_type=as.numeric(traffic_type),
+         weekend=as.numeric(weekend), 
+        visitor_type = as.numeric(visitor_type),
+        month = as.numeric(month))%>% pivot_longer(-res)%>%
+  ggplot(aes(y=res, x=value))+
+  facet_wrap(~ name, scales="free")+
+  geom_point()+
+  geom_smooth()
+```
+
+```{r}
+hist(resid(model_entire4),freq=F, breaks=50)
+```
+
+
+
+
+
+
+```{r}
+library(knitr)
+library(kableExtra)
+tab <- matrix(c(AIC(model), model$deviance, AUC_eval(model, Data_final)),nrow = 1)
+colnames(tab) <- c("AIC","Residual Deviance","AUC value")
+kable(tab, align="c", caption = "Table 1: AIC, Residual Deviance and AUC value of our final model.", table.attr = "style='width:50%;'", booktabs=T) %>% kable_styling(position = "center")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+---
+---
+---
+```{r}
+Data_final%>%
+ mutate(res=resid(model_entire), operating_sys=as.numeric(operating_sys),
+        browser=as.numeric(browser),
+        region=as.numeric(region),
+        traffic_type=as.numeric(traffic_type),
+         weekend=as.numeric(weekend), 
+        visitor_type = as.numeric(visitor_type),
+        month = as.numeric(month))%>% pivot_longer(-res)%>%
+  ggplot(aes(y=res, x=value))+
+  facet_wrap(~ name, scales="free")+
+  geom_point()+
+  geom_smooth()
+```
+
+
+### Regression 3 
+```{r}
+model_entire <- glm(purchase~. - time_info_page -special_day -browser -region -operating_sys + I(time_product_page^2) + page_values * bounce_rates + page_values * exit_rates +page_values * n_product_page + page_values * n_info_page + page_values * n_admin_page, data=Data_final, family="binomial")
+summary(model_entire)
+AUC_eval(model_entire, Data_final)
+AIC(model_entire)
+```
+
+```{r}
+Data_final%>%
+ mutate(res=resid(model_entire), operating_sys=as.numeric(operating_sys),
+        browser=as.numeric(browser),
+        region=as.numeric(region),
+        traffic_type=as.numeric(traffic_type),
+         weekend=as.numeric(weekend), 
+        visitor_type = as.numeric(visitor_type),
+        month = as.numeric(month))%>% pivot_longer(-res)%>%
+  ggplot(aes(y=res, x=value))+
+  facet_wrap(~ name, scales="free")+
+  geom_point()+
+  geom_smooth()
+```
+
+```{r}
+stepAIC(model_entire)
+```
+
+```{r}
+model_ent <- glm(formula = purchase ~ n_admin_page + time_admin_page + n_info_page + 
+    n_product_page + time_product_page + bounce_rates + exit_rates + 
+    page_values + month + traffic_type + visitor_type + I(time_product_page^2) + 
+    bounce_rates:page_values + exit_rates:page_values + n_product_page:page_values + 
+    n_info_page:page_values + n_admin_page:page_values, family = "binomial", 
+    data = Data_final)
+
+AUC_eval(model_ent, Data_final)
+summary(model_ent)
+AIC(model_ent)
+```
+
+```{r}
+model_ent <- glm(purchase~. -browser -region -operating_sys -weekend -n_info_page - time_info_page - special_day + I(time_product_page^2) + page_values * (n_product_page + n_admin_page + n_info_page), data=Data_final, family="binomial") 
+
+AUC_eval(model_ent, Data_final)
+summary(model_ent)
+AIC(model_ent)
+
+```
+
+```{r}
+model_ent <- glm(formula = purchase ~ n_admin_page + time_admin_page  + 
+    n_product_page + time_product_page + exit_rates + 
+    page_values + month + traffic_type + visitor_type + I(time_product_page^2) + 
+    bounce_rates:n_product_page + bounce_rates:n_admin_page + bounce_rates*n_info_page + exit_rates:n_product_page + exit_rates:n_admin_page + exit_rates*n_info_page +  n_product_page:page_values  + n_admin_page:page_values + n_info_page * page_values, family = "binomial", 
+    data = Data_final)
+
+AUC_eval(model_ent, Data_final)
+summary(model_ent)
+AIC(model_ent)
+```
+
+
+```{r}
+model_ent <- glm(formula = purchase ~ n_admin_page + time_admin_page  + 
+    n_product_page + time_product_page + exit_rates + 
+    page_values + month + traffic_type + visitor_type + I(time_product_page^2) + 
+    +  n_product_page:page_values  + n_admin_page:page_values + n_info_page * page_values, family = "binomial", data = Data_final)
+
+AUC_eval(model_ent, Data_final)
+summary(model_ent)
+AIC(model_ent)
+```
+
+
+
+
+
+
