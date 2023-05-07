@@ -1,0 +1,167 @@
+---
+title: "Project-5 : Temperature"
+output: html_document
+Student : "Louise Largeau"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning=FALSE)
+library(ggplot2)
+library(tidyverse)
+library(MASS)
+library(stats)
+library(cowplot)
+library(dplyr)
+library(stats)
+library(tidyr)
+library(readr)
+library(pROC)
+```
+
+```{r, eval=FALSE}
+data <- read.csv("temperature.csv", sep=",", dec=".", head=TRUE)
+```
+
+```{r, fit with all the data set}
+data <- temperature
+x <- as.vector(t(data[, -c(1, 14:19)]))
+x <- ts(x, start=1880, frequency=12)
+plot(x)
+
+lmData <- data.frame(y = x,
+                     month = as.factor(rep(1:12,length(x)/12)),
+                      t = 1:length(x))
+
+lmfit <- lm(y~., data=lmData)
+plot(x)
+points(seq(1880, 2022, length=length(x)),fitted(lmfit), type="l", col="blue")
+
+
+plot(resid(lmfit), type="l", col="blue")
+
+x <- ts(x[961:1716], start=1960, frequency=12)
+lmData <- data.frame(y = x,
+                     month = as.factor(rep(1:12,length(x)/12)),
+                      t = 1:length(x))
+lmfit2 <- lm(y~t + month + exp(t*0.007), data=lmData)
+plot(x)
+points(seq(1960, 2022, length=length(x)),fitted(lmfit2), type="l", col="red")
+res = resid(lmfit2)
+plot(resid(lmfit2), type="l", col="red")
+```
+
+```{r}
+plot(stl(new2_x, s.window = "periodic"))
+
+dec = decompose(x)
+x_dec = x - dec$trend
+plot(x)
+points(seq(1880, 2022, length=length(x)),dec$trend, type="l", col="red")
+plot(x_dec, type="l", col="red")
+```
+
+```{r, with only the second part}
+x_lin <- ts(x[961:1716], start=1960, frequency=12)
+lmData <- data.frame(y = x_lin,
+                     month = as.factor(rep(1:12,length(x_lin)/12)),
+                      t = 1:length(x_lin))
+
+lmfit <- lm(y~., data=lmData)
+plot(x_lin)
+points(seq(1960, 2022, length=length(x_lin)),fitted(lmfit), type="l", col="blue")
+plot(resid(lmfit), type="l", col="blue")
+
+lmfit2 <- lm(y~.+I(t^2), data=lmData)
+plot(x)
+points(seq(1960, 2022, length=length(x_lin)),fitted(lmfit2), type="l", col="red")
+plot(resid(lmfit2), type="l", col="red")
+
+plot(x_lin - lmfit2$fitted.values)
+
+# On enlève la trend
+new_x = x_lin - lmfit2$fitted.values
+
+# On enlève la saisonnalité 
+new2_x = diff(new_x, lag=12)
+plot(new2_x)
+```
+
+```{r}
+acf(new2_x)
+pacf(new2_x)
+```
+
+```{r}
+sarima_model <- arima(new2_x, order=c(2, 1, 7), seasonal=list(order=c(2, 0, 1), period=12))
+summary(sarima_model)
+```
+
+```{r, fit with all the data set}
+data <- temperature
+x <- as.vector(t(data[, -c(1, 14:19)]))
+x <- ts(x, start=1880, frequency=12)
+plot(x)
+
+x_sais = diff(x, 12)
+lmData <- data.frame(y = x_sais,
+                     month = as.factor(rep(1:12,length(x_sais)/12)),
+                      t = 1:length(x_sais))
+
+lmfit <- lm(y~., data=lmData)
+plot(x_sais)
+points(seq(1880, 2022, length=length(x_sais)),fitted(lmfit), type="l", col="blue")
+
+
+plot(resid(lmfit), type="l", col="blue")
+
+lmfit2 <- lm(y~.+I(t^2), data=lmData)
+plot(x_sais)
+points(seq(1880, 2022, length=length(x_sais)),fitted(lmfit2), type="l", col="red")
+res = resid(lmfit2)
+plot(resid(lmfit2), type="l", col="red")
+```
+
+
+
+```{r}
+library(forecast)
+forecast(sarima_model, h=12)+
+```
+
+
+```{r, test}
+# AR 
+ar1 <- arima.sim(list(ma=c(0.8)), 100)
+ar2 <- arima.sim(list(ma=c(0.8, -0.4)), 100)
+ar3 <- arima.sim(list(ma=c(0.8, -0.4, 3)), 100)
+acf(ar1)
+pacf(ar1)
+acf(ar2)
+pacf(ar2)
+acf(ar3)
+pacf(ar3)
+ 
+  ma1 <- arima.sim(list(ma=c(0.8)), 100)
+```
+
+```{r}
+x <- arima.sim(list(ar=c(0.8),ma=c(0.8)), 100)
+acf(x); pacf(x)
+```
+
+```{r}
+x_ws <- diff(x, lag=1)
+x_ws <- diff(x_ws, lag=1)
+
+plot(x_ws)
+
+acf(x_ws)
+pacf(x_ws)
+
+fit <- arima(x, order=c(13, 0, 4))
+
+
+```
+
+
+

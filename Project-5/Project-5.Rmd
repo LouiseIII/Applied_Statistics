@@ -1,0 +1,285 @@
+---
+title: "Project-5"
+output: html_document
+date: "2023-05-04"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning=FALSE)
+library(ggplot2)
+library(forecast)
+library(gridExtra)
+library(tidyverse)
+library(MASS)
+library(stats)
+library(cowplot)
+library(dplyr)
+library(stats)
+library(tidyr)
+library(readr)
+library(pROC)
+```
+
+Climate change is a major and crucial problem today. It is at the forefront of many people's concerns. On the right track given that is the cause of numerous natural disasters and ice caps melting, threatening many species and, ultimately, our own. It is truly unfortunate that human activity is the primary cause of climate change. Activities such as air travel, population growth, and plastic production have contributed significantly to the emission of greenhouse gases that trap heat in the atmosphere, leading to rising temperatures and the resulting impacts on our planet.
+The manifestation of this warming, however, prompts questions. Is it the result of rising temperatures or the increase in greenhouse gas emissions? Regardless of the cause, it is clear that urgent action is needed to address this issue and mitigate its harmful effects on the planet and its inhabitants. 
+
+# Temperature
+
+This report will focus on the temperature data set spanning from 1880 to 2022, which is visually represented in Figure 1 below. As depicted in the figure, it is evident that the temperature tends to increase gradually over time. Moreover, a closer inspection of the data reveals that it can be divided into two distinct periods: the first period, lasting until 1960, in which temperatures remain relatively constant with minor fluctuations, and the second period, beginning in 1960, in which temperatures appear to increase as a linear function.
+
+```{r, load data, fig.align="center", fig.cap="Figure 1: Illustration of the data set 'temperature.'"}
+setwd("~/Google Drive/EPFL/Applied Stat/StatApp-314577/Project-5")
+data <- read.csv("temperature.csv", sep=",", dec=".", head=TRUE)
+
+x <- as.vector(t(data[, -c(1, 14:19)]))
+x <- ts(x, start=1880, frequency=12)
+plot(x, ylab="Temperature")
+
+x <- ts(x[961:1716], start=1960, frequency=12)
+#plot(x, ylab="Temperature")
+```
+
+[+ EXPLICATION MODÈLE SARIMA]
+
+Based on this observation, we decide to concentrate our analyze to the data from 1960 to 2022. Given that a clear increasing trend is present in this period, our first aim is to identify and subsequently remove it. To achieve this, we will attempt to fit the data to both a linear and quadratic over time model. The resulting fitting curves : 
+
+```{r, fig.align="center", fig.cap="Figure 2: Illustration of the fitted trend using respectively linear and quadratic Models."}
+lmData <- data.frame(y = x,
+                     month = as.factor(rep(1:12,length(x)/12)),
+                      t = 1:length(x))
+
+# Fit with linear 
+
+lmfit <- lm(y~., data=lmData)
+#summary(lmfit)
+#anova(lmfit)
+#plot(x, main="de")
+#points(seq(1960, 2022, length=length(x)),fitted(lmfit), type="l", col="blue")
+
+g1 <- ggplot(lmData, aes(x=seq(1960, 2022, length=length(x))))+
+  geom_line(aes(y=x))+
+  geom_line(aes(y=fitted(lmfit)), color="red")+
+  theme_minimal()+
+  xlab("Time")+
+  ylab("Temperature")
+
+# Fit with quadratic 
+
+lmfit2 <- lm(y~.+I(t^2), data=lmData) #+ I(exp(t-500))
+
+g2 <- ggplot(lmData, aes(x=seq(1960, 2022, length=length(x))))+
+  geom_line(aes(y=x))+
+  geom_line(aes(y=fitted(lmfit2)), color="blue")+
+  theme_minimal()+
+  xlab("Time")+
+  ylab("Temperature")
+
+grid.arrange(g1, g2, ncol = 2)
+
+```
+
+```{r, eval =FALSE}
+
+
+plot(resid(lmfit), type="l", col="blue")
+
+lmfit2 <- lm(y~.+I(t^2), data=lmData) #+ I(exp(t-500))
+anova(lmfit2)
+summary(lmfit2)
+plot(x)
+points(seq(1960, 2022, length=length(x)),fitted(lmfit2), type="l", col="red")
+res = resid(lmfit2)
+plot(resid(lmfit2), type="l", col="red")
+```
+
+Figure 2 shows that there are not so much difference between both. This can be attributed to the fact that the coefficient of the $t^2$ term is extremely small (on the order of e-07), indicating that a linear trend can be enough to explain the general behavior of the data.
+
+## Theory around differencing 
+
+Assuming a linear trend with seasonal effect ($s=12$), we can express our data as $X_t = Y_t + T_t + S_t$, where:
+
+- $X_t$ is the temperature
+
+- $S_t = S_{t+12}$ is the seasonal component 
+
+- $T_t = at +b$ is the trend component (and a, b are both fixed constants) 
+
+- $Y_t$ is the stationary remainder with mean zero 
+
+We can observe that (with $B$ the backshift operator)  : 
+
+$$(1-B)(1-B^{12}) X_t = (1-B)(1-B^{12}) (Y_t + T_t + S_t) = (1-B) (Y_t - Y_{t-12} + T_t - T_{t -12})$$
+$$= (1-B) (Y_t - Y_{t-12} + at +b - at - 12a - b) = Y_t - Y_{t-1} - Y_{t-12} + Y_{t-13}$$
+
+$$= (1 - B) (1 - B^{12}) Y_t$$
+
+
+It can indeed be observed that after differentiating with lag 12 and 1, we obtain something that appears to be stationary. To gain further insight, we can plot the resulting series and observe that it appears indeed to be more stationary with a mean of 0.
+
+```{r, fig.align="center", fig.cap="Figure 3: Process obtained after lag-1 and lag-12 differencing."}
+x_diff <- diff(x, lag=12)
+x_diff <- diff(x_diff)
+plot(x_diff)
+
+#plot(resid(lmfit), type="l")
+```
+
+As enumerate before, we aim to fit a SARIMA model, we just determine that d=1 and D=1. In order to estimate the others parameters we study the ACF and PACF of this resulting process : 
+
+```{r, fig.align="center", fig.cap="Figure 4: ACF and PACF of the process."}
+par(mfrow = c(1, 2))
+acf(x_diff, lag.max=25)
+pacf(x_diff, lag.max=25)
+#par(mfrow = c(1))
+```
+
+We now need to determine the p, q, P, and Q parameters for our model. The ACF plot will allow us to determine q and Q for our model. Indeed, a significant pic at lag k means that there is an important correlation and therefore a dependence. 
+Specifically, we can observe that there are 1 or 4 significant pics in the plot (depending if we include those that slightly exceed the blue line), with the spike at lag 12 being particularly prominent, and another at lag 24. This leads us to conclude that q=3 or 4, and Q=2 or 1.
+
+Similarly, we can use the PACF plot to determine the p and P parameters. A spike at lag k in the PACF plot indicates a correlation between $X_t$ and $X_{t+k}$, after removing the influence of all intermediate observations $X_{t+1}$, $X_{t+2}$, ..., $X_{t+k-1}$. After examining the PACF plot, we observe three significant spikes at the beginning and two more at lags 12 and 24. This leads us to conclude that p=3 and P=2.
+
+In conclusion we obtain two possible models, depending on the confidence level we impose :
+
+`(p, d, q, P, D, Q, s) = (3, 1, 4, 2, 1, 2, 12)` or `(p, d, q, P, D, Q, s) = (3, 1, 3, 2, 1, 1, 12)`
+
+## Fitting the model 
+
+We can then fit the two models with the `arima` function. The function will estimate the parameters by Gaussian MLE. 
+
+```{r, eval=FALSE}
+fit_obs <- arima(x, order=c(3, 1, 3), seasonal=list(order=c(2, 1, 2), period=12))
+AIC(fit_obs)
+#acf(fit_obs$residuals); pacf(fit_obs$residuals)
+```
+
+```{r}
+fit_obs <- arima(x, order=c(3, 1, 4), seasonal=list(order=c(2, 1, 1), period=12))
+AIC(fit_obs)
+#acf(fit_obs$residuals); pacf(fit_obs$residuals)
+```
+
+```{r}
+fit_obs <- arima(x, order=c(3, 1, 3), seasonal=list(order=c(2, 1, 1), period=12))
+AIC(fit_obs)
+#acf(fit_obs$residuals); pacf(fit_obs$residuals)
+```
+
+When fitting a SARIMA model to a time series, one common way to compare different models is to look at their AIC values. A lower AIC indicates a better model fit, so we might expect the model with the smaller AIC to be the better choice. However, it's important to note that AIC only measures the goodness of fit for a given model, and it does not necessarily tell us how well the model will perform in making predictions.
+
+In this case, it appears that the second one is the most appropriate for the data. 
+
+
+```{r, eval=FALSE}
+n <- length(x)
+train <- 1:(n-floor(n/3))
+Err <- array(0,c(2, floor(n/3)-2+1 )) # rolling 2-step ahead forecast 
+for(j in 0:( floor(n/3)-2 )){
+  fit <- arima(x[train+j], order=c(3, 1, 4), seasonal=list(order=c(2, 1, 1), period=12))
+  Err[1,j+1] <- sum(x[c(1,2) + end(train)[1]+j] - predict(fit, n.ahead=2)$pred)^2
+  fit <- arima(x[train+j], order=c(3, 1, 3), seasonal=list(order=c(2, 1, 1), period=12))
+  Err[2,j+1] <- sum(x[c(1,2) + end(train)[1]+j] - predict(fit, n.ahead=2)$pred)^2
+}
+rowMeans(Err)
+```
+
+
+```{r, eval=FALSE}
+fit <- arima(x, order=c(2, 1, 4), seasonal=list(order=c(1, 1, 0), period=12))
+acf(fit$residuals); pacf(fit$residuals)
+```
+
+```{r, eval=FALSE}
+qqnorm(fit_obs$residuals)
+#lines(seq(-3, 3, 0.5), seq(-3, 3, 0.5), color="red")
+```
+
+## Residual Diagnostics
+
+```{r}
+qqnorm(fit_obs$residuals)
+```
+
+--> should be roughly gaussian --> okay 
+
+```{r, fig.align="center", fig.cap="Figure 5: ACF and PACF of the residuals."}
+par(mfrow = c(1, 2))
+acf(fit_obs$residuals, lag.max=25)
+pacf(fit_obs$residuals, lag.max=25)
+#par(mfrow = c(1))
+```
+
+--> should be white noise (encouraging)
+
+
+
+```{r, eval=FALSE}
+fit <- arima(x, order=c(2, 0, 4), seasonal=list(order=c(1, 1, 1), period=12))
+acf(fit$residuals); pacf(fit$residuals)
+```
+
+```{r, eval=FALSE}
+acf(resid(lmfit))
+pacf
+```
+
+
+## Prédictions 
+
+The primary objective of studying time series is often to make predictions with a certain degree of accuracy, along with a corresponding confidence interval. In this section, we will use the `forecast` function to achieve this goal. The figure below displays the predicted values up to 2050.
+
+```{r, eval=FALSE}
+#fit <- Arima(x, order=c(2, 1, 4), seasonal=list(order=c(1, 1, 0), period=12))
+#preds <- forecast(fit, 12*20, c(0.5,0.95)) 
+#autoplot(x) + autolayer(preds)
+
+fit <- Arima(AirPassengers, order=c(2,1,1)) # capital 
+preds <- forecast(fit, 12*10, c(0.5,0.95)) # 2-year ahead forecast 
+#preds <- ts(preds$mean, start=1961, freq=12)
+autoplot(AirPassengers) + autolayer(preds)
+```
+
+As we can observe, the generated data still adheres to the established trend. Even though the trend may not be as distinct beyond the 2050 prediction, it is worth noting that the confidence interval becomes increasingly significant as the prediction horizon extends further into the future.
+
+```{r}
+fit <- Arima(x, order=c(2, 1, 3), seasonal=list(order=c(2, 1, 1), period=12))
+preds <- forecast(fit, 12*28, c(0.5,0.95)) # 2-year ahead forecast 
+#preds_value <- ts(preds$mean, start=2023, freq=12)
+
+preds_value <- ts(preds$mean, start=2023, freq=12)
+preds_high <- ts(preds$upper, start=2023, freq=12)
+preds_low <- ts(preds$low, start=,2023, freq=12)
+autoplot(x) + autolayer(preds_value)+autolayer(preds_high) + autolayer(preds_low)
+```
+```{r, eval=FALSE}
+fit <- Arima(x, order=c(2, 1, 3), seasonal=list(order=c(2, 1, 1), period=12), include.drift = TRUE)
+preds <- forecast(fit, 12*10, c(0.5,0.95)) # 2-year ahead forecast 
+#preds_value <- ts(preds$mean, start=2023, freq=12)
+autoplot(x) + autolayer(preds)
+```
+
+```{r, eval=FALSE}
+fit <- Arima(x, order=c(2, 1, 3), seasonal=list(order=c(2, 1, 1), period=12))
+preds <- forecast(fit, 12*10, c(0.5,0.95)) # 2-year ahead forecast 
+preds <- ts(preds$fitted, start=1960, freq=12)
+autoplot(x) + autolayer(preds)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
