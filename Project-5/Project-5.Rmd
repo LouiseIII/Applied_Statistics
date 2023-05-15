@@ -1,7 +1,22 @@
 ---
-title: "Project-5"
-output: html_document
-date: "2023-05-04"
+title: "Temperature"
+subtitle: |
+  | Project 5
+#author : "LAST NAME First name"
+#date: "March 19, 2023"
+output: 
+  html_document:
+    theme: cosmo
+    highlight: zenburn
+    toc: true
+    number_sections: true
+    toc_float:
+      collapsed: false
+header-includes:
+  - \usepackage{bm}
+  - \newcommand{\E}{\mathbb{E}}
+  - \newcommand{\R}{\mathbb{R}}
+#bibliography: biblio.bib
 ---
 
 ```{r setup, include=FALSE}
@@ -14,20 +29,22 @@ library(MASS)
 library(stats)
 library(cowplot)
 library(dplyr)
-library(stats)
 library(tidyr)
 library(readr)
 library(pROC)
+library(nlme)
 ```
 
 Climate change is a major and crucial problem today. It is at the forefront of many people's concerns. On the right track given that is the cause of numerous natural disasters and ice caps melting, threatening many species and, ultimately, our own. It is truly unfortunate that human activity is the primary cause of climate change. Activities such as air travel, population growth, and plastic production have contributed significantly to the emission of greenhouse gases that trap heat in the atmosphere, leading to rising temperatures and the resulting impacts on our planet.
 The manifestation of this warming, however, prompts questions. Is it the result of rising temperatures or the increase in greenhouse gas emissions? Regardless of the cause, it is clear that urgent action is needed to address this issue and mitigate its harmful effects on the planet and its inhabitants. 
 
-# Temperature
+# SARIMA Model
 
-This report will focus on the temperature data set spanning from 1880 to 2022, which is visually represented in Figure 1 below. As depicted in the figure, it is evident that the temperature tends to increase gradually over time. Moreover, a closer inspection of the data reveals that it can be divided into two distinct periods: the first period, lasting until 1960, in which temperatures remain relatively constant with minor fluctuations, and the second period, beginning in 1960, in which temperatures appear to increase as a linear function.
+This report will focus on the temperature data set spanning from 1880 to 2022, which is visually represented in Figure 1 below. It is then evident that the temperature tends to increase gradually over time. Moreover, a closer inspection of the data reveals that it can be divided into two distinct periods: the first period, lasting until 1960, in which temperatures remain relatively constant with minor fluctuations, and the second period, beginning in 1960. 
 
-```{r, load data, fig.align="center", fig.cap="Figure 1: Illustration of the data set 'temperature.'"}
+In this initial section, our objective is to construct a SARIMA model step by step. We will begin by providing a clear explanation of the SARIMA model, before identify the trend of the data and construct the model. Once the model established, we will perform diagnostic checks to confirm its validity. Finally, we will conclude with a brief discussion of our findings and predictions for the period up to 2050.
+
+```{r, load data, fig.align="center", fig.cap="Figure 1: Illustration of the time series 'temperature.'"}
 setwd("~/Google Drive/EPFL/Applied Stat/StatApp-314577/Project-5")
 data <- read.csv("temperature.csv", sep=",", dec=".", head=TRUE)
 
@@ -38,12 +55,27 @@ plot(x, ylab="Temperature")
 x <- ts(x[961:1716], start=1960, frequency=12)
 #plot(x, ylab="Temperature")
 ```
+## Theory about SARIMA Model
 
-[+ EXPLICATION MODÈLE SARIMA]
+The  Seasonal Autoregressive Integrated Moving Average (SARIMA) model is a popular method to fit time series which present some seasonal and non seasonal trends. It is an extension of the ARIMA and ARMA models. 
 
-Based on this observation, we decide to concentrate our analyze to the data from 1960 to 2022. Given that a clear increasing trend is present in this period, our first aim is to identify and subsequently remove it. To achieve this, we will attempt to fit the data to both a linear and quadratic over time model. The resulting fitting curves : 
+Indeed, by definition the process $(X_t, t \in \mathbb{Z})$ is said to be a SARIMA (p, d, q) x (P, D, Q$)_s$ if 
+$$\Phi_{[P]} (B^s) \phi_{[p]}(B) (1 - B^s)^D (1-B)^d X_t = \Theta_{[Q]}(B^s) \theta_{[q]}(B) Z_t$$
+where $Z_t$ is white noise and $\Phi_{[P]} (B^s), \phi_{[p]}(B), \Theta_{[Q]}(B^s)$ and $\theta_{[q]}(B)$ are polynomials of the designated order. 
 
-```{r, fig.align="center", fig.cap="Figure 2: Illustration of the fitted trend using respectively linear and quadratic Models."}
+Therefore the SARIMA model is very useful to fit and predict time series which exhibits a pattern of seasonal variations. That is why it is a very interesting for our data set since temperatures are known to vary seasonally, we we can take this knowledge into account and assume that there is a month-to-month seasonality. 
+
+Note : This hypothesis will be deeply analyze in the second part of the report. 
+
+## Data Description
+
+As we decided to concentrate our analyze to the data from 1960 to 2022 and that a clear increasing trend is present in this period, we therefore make the hypothesis that the trend is linear as shown in Figure 2 below.  
+
+Note : We based our hypothesis on visual tendency, and also by remarking that when we attempt to fit the data to both a linear and quadratic over time model, there are not so much difference between both due to the fact that the coefficient of the $t^2$ term is extremely small (on the order of e-07), suggesting that a linear trend may sufficiently account for the behavior of the data. However we will discuss more deeply about it in the second part of the report. 
+
+```{r, fig.align="center", fig.cap="Figure 2: Illustration of the fitted trend using linear Model."}
+# our first aim is to identify and subsequently remove it. To achieve this, we will attempt to fit the data to both a linear and quadratic over time model. The resulting fitting curves : 
+
 lmData <- data.frame(y = x,
                      month = as.factor(rep(1:12,length(x)/12)),
                       t = 1:length(x))
@@ -74,13 +106,11 @@ g2 <- ggplot(lmData, aes(x=seq(1960, 2022, length=length(x))))+
   xlab("Time")+
   ylab("Temperature")
 
-grid.arrange(g1, g2, ncol = 2)
+grid.arrange(g1, ncol = 1)
 
 ```
 
 ```{r, eval =FALSE}
-
-
 plot(resid(lmfit), type="l", col="blue")
 
 lmfit2 <- lm(y~.+I(t^2), data=lmData) #+ I(exp(t-500))
@@ -92,11 +122,10 @@ res = resid(lmfit2)
 plot(resid(lmfit2), type="l", col="red")
 ```
 
-Figure 2 shows that there are not so much difference between both. This can be attributed to the fact that the coefficient of the $t^2$ term is extremely small (on the order of e-07), indicating that a linear trend can be enough to explain the general behavior of the data.
 
 ## Theory around differencing 
 
-Assuming a linear trend with seasonal effect ($s=12$), we can express our data as $X_t = Y_t + T_t + S_t$, where:
+Assuming a linear trend with seasonal effect ($s=12$), we can decompose our data as $X_t = Y_t + T_t + S_t$, where:
 
 - $X_t$ is the temperature
 
@@ -113,16 +142,18 @@ $$= (1-B) (Y_t - Y_{t-12} + at +b - at - 12a - b) = Y_t - Y_{t-1} - Y_{t-12} + Y
 
 $$= (1 - B) (1 - B^{12}) Y_t$$
 
-
-It can indeed be observed that after differentiating with lag 12 and 1, we obtain something that appears to be stationary. To gain further insight, we can plot the resulting series and observe that it appears indeed to be more stationary with a mean of 0.
+It can indeed be observed that after differentiating with lag 12 and 1, we obtain something that appears to be more stationary as shown in the Figure 3. There is no more apparent trend or seasonality and the serie seems to have zero mean which is very encouraging. However, it is very difficult to prove the stationary of a series and therefore, we can only make the hypothesis. We will thus construct a model on this differentiated series. 
 
 ```{r, fig.align="center", fig.cap="Figure 3: Process obtained after lag-1 and lag-12 differencing."}
 x_diff <- diff(x, lag=12)
 x_diff <- diff(x_diff)
 plot(x_diff)
 
+#res <- resid(lmfit)
 #plot(resid(lmfit), type="l")
 ```
+
+## Construction of the model
 
 As enumerate before, we aim to fit a SARIMA model, we just determine that d=1 and D=1. In order to estimate the others parameters we study the ACF and PACF of this resulting process : 
 
@@ -130,6 +161,10 @@ As enumerate before, we aim to fit a SARIMA model, we just determine that d=1 an
 par(mfrow = c(1, 2))
 acf(x_diff, lag.max=25)
 pacf(x_diff, lag.max=25)
+
+#acf(res, lag.max=25)
+#pacf(res, lag.max=25)
+
 #par(mfrow = c(1))
 ```
 
@@ -142,8 +177,6 @@ In conclusion we obtain two possible models, depending on the confidence level w
 
 `(p, d, q, P, D, Q, s) = (3, 1, 4, 2, 1, 2, 12)` or `(p, d, q, P, D, Q, s) = (3, 1, 3, 2, 1, 1, 12)`
 
-## Fitting the model 
-
 We can then fit the two models with the `arima` function. The function will estimate the parameters by Gaussian MLE. 
 
 ```{r, eval=FALSE}
@@ -153,23 +186,22 @@ AIC(fit_obs)
 ```
 
 ```{r}
-fit_obs <- arima(x, order=c(3, 1, 4), seasonal=list(order=c(2, 1, 1), period=12))
-AIC(fit_obs)
+fit_obs1 <- arima(x, order=c(3, 1, 4), seasonal=list(order=c(2, 1, 1), period=12))
+#AIC(fit_obs1)
 #acf(fit_obs$residuals); pacf(fit_obs$residuals)
 ```
 
 ```{r}
 fit_obs <- arima(x, order=c(3, 1, 3), seasonal=list(order=c(2, 1, 1), period=12))
-AIC(fit_obs)
+#AIC(fit_obs)
 #acf(fit_obs$residuals); pacf(fit_obs$residuals)
 ```
 
-When fitting a SARIMA model to a time series, one common way to compare different models is to look at their AIC values. A lower AIC indicates a better model fit, so we might expect the model with the smaller AIC to be the better choice. However, it's important to note that AIC only measures the goodness of fit for a given model, and it does not necessarily tell us how well the model will perform in making predictions.
-
-In this case, it appears that the second one is the most appropriate for the data. 
-
+When fitting a SARIMA model to a time series, one common way to compare different models is to look at their AIC values. A lower AIC indicates a better model fit, so we might expect the model with the smaller AIC to be the better choice. In this case, the AIC values are respectively : `r round(AIC(fit_obs1), 2)` and `r round(AIC(fit_obs), 2)`. And it therefore appears that the second one is the most appropriate for the data. 
 
 ```{r, eval=FALSE}
+# However, it's important to note that AIC only measures the goodness of fit for a given model, and it does not necessarily tell us how well the model will perform in making predictions. 
+
 n <- length(x)
 train <- 1:(n-floor(n/3))
 Err <- array(0,c(2, floor(n/3)-2+1 )) # rolling 2-step ahead forecast 
@@ -183,95 +215,198 @@ rowMeans(Err)
 ```
 
 
-```{r, eval=FALSE}
-fit <- arima(x, order=c(2, 1, 4), seasonal=list(order=c(1, 1, 0), period=12))
-acf(fit$residuals); pacf(fit$residuals)
-```
-
-```{r, eval=FALSE}
-qqnorm(fit_obs$residuals)
-#lines(seq(-3, 3, 0.5), seq(-3, 3, 0.5), color="red")
-```
-
 ## Residual Diagnostics
 
-```{r}
+As in all construction of models it is essential to perform a diagnostic of our result model. Many diagnostics are possible to access the validity of the model, we present here two of them. 
+The first one is related to the fact that the residuals of the fitting model should be roughly Gaussian. To verify this condition we make a QQ-plot of the residuals, which is shown in the Figure 5 below. And as we can see they form indeed a straigth line which is a very encouraging result. 
+
+
+```{r, fig.align="center", fig.cap="Figure 5: QQ-plot of the model's residuals."}
 qqnorm(fit_obs$residuals)
 ```
+---
 
---> should be roughly gaussian --> okay 
+Moreover, another property is that the residuals should be white noise. To check this one, we can have the idea to plot the acf and pacf, which are shown in Figure 6. Here again, results are quite satisfying since there is no spike outside the blue lines. That suggests that there the terms are independent. 
+However we can notice an unique spike on the first one in the acf plot at lag 0, but this is normal since it represents the autocorrelation and by defition $\gamma(0)/\gamma(0) = 1$. 
 
-```{r, fig.align="center", fig.cap="Figure 5: ACF and PACF of the residuals."}
+```{r, fig.align="center", fig.cap="Figure 6: ACF and PACF of the residuals."}
 par(mfrow = c(1, 2))
-acf(fit_obs$residuals, lag.max=25)
-pacf(fit_obs$residuals, lag.max=25)
+acf(fit_obs$residuals, lag.max=25, main="")
+pacf(fit_obs$residuals, lag.max=25, main="")
 #par(mfrow = c(1))
 ```
 
---> should be white noise (encouraging)
+---
 
+Another method to assess the quality of a fitted model is to simulate data from it. In this case, it means generating data from the year 1960 to 2022 and comparing it to the original dataset that was used for fitting the model. The results of the simulation are shown in Figure 7, which is quite encouraging. The pink curve follows the major fluctuations of the process and has the same overall behavior. However, one observation that can be made is that the model tends to underestimate extreme values from the trend, such as high perturbations or black spikes.
 
-
-```{r, eval=FALSE}
-fit <- arima(x, order=c(2, 0, 4), seasonal=list(order=c(1, 1, 1), period=12))
-acf(fit$residuals); pacf(fit$residuals)
+```{r, fig.align="center", fig.cap="Figure 7 : Comparison between the data set and the simulation from the fitted model."}
+plot(x)
+lines(seq(1960, 2022.9999, 1/12), fitted(fit_obs), , col="pink")
 ```
-
-```{r, eval=FALSE}
-acf(resid(lmfit))
-pacf
-```
-
 
 ## Prédictions 
 
 The primary objective of studying time series is often to make predictions with a certain degree of accuracy, along with a corresponding confidence interval. In this section, we will use the `forecast` function to achieve this goal. The figure below displays the predicted values up to 2050.
 
-```{r, eval=FALSE}
-#fit <- Arima(x, order=c(2, 1, 4), seasonal=list(order=c(1, 1, 0), period=12))
-#preds <- forecast(fit, 12*20, c(0.5,0.95)) 
-#autoplot(x) + autolayer(preds)
+As we could expect the prediction follows the linear trend that we assumed before. And with this model the prediction is not so optimist for the future, it indeed predict an increasing and we will exceed 1 will a probability of 90% in 2050. Moreover even through it is not evident in the Figure, the confidence interval becomes increasingly significant as we try to predict far into the future. 
 
-fit <- Arima(AirPassengers, order=c(2,1,1)) # capital 
-preds <- forecast(fit, 12*10, c(0.5,0.95)) # 2-year ahead forecast 
-#preds <- ts(preds$mean, start=1961, freq=12)
-autoplot(AirPassengers) + autolayer(preds)
+```{r, fig.align="center", fig.cap="Figure 7: Prediction of the temperature until 2050 with the model established."}
+fit <- Arima(x, order=c(3, 1, 3), seasonal=list(order=c(2, 1, 1), period=12), include.drift = TRUE)
+preds <- forecast(fit, 12*28, c(0.5,0.95)) # 2-year ahead forecast 
+autoplot(x) + autolayer(preds)+ ylab("Temperature")+theme_minimal()
 ```
 
-As we can observe, the generated data still adheres to the established trend. Even though the trend may not be as distinct beyond the 2050 prediction, it is worth noting that the confidence interval becomes increasingly significant as the prediction horizon extends further into the future.
+
+
+## Auto SARIMA fonction
+
+In the R programming language, the forecast package includes a highly useful function called `auto.arima`, which is capable of automatically identifying the best SARIMA model for a given time series. `auto.arima` searches for the best model based on the Akaike information criterion (AIC) and considers only small orders to avoid overfitting.
+
+When we applied this function to our data, the resulting best SARIMA model was:
 
 ```{r}
-fit <- Arima(x, order=c(2, 1, 3), seasonal=list(order=c(2, 1, 1), period=12))
+auto.arima(x)
+``` 
+
+We then remark that the AIC of this model is not so far away from our previous result, and we are therefore confident in our previous analysis. 
+
+Moreover, by combining the formula of the definition and the coefficient obtained in the previous function we can give a concrete model of the data :
+
+$(1 + 0.66 B^{12} + 0.12 B^{2\times12}) (1+0.86B) (1-B) X_t = (1 -0.65 B^{12}) (1 -1.38 B + 0.39 B^2) Z_t$
+
+---
+
+One idea to compare the predictions that we could obtain with both model. We represent the prediction until 2050 in Figure 8. 
+
+```{r, fig.align="center", fig.cap="Figure 8: Prediction of the temperature until 2050 with the model found by auto.arima function."}
+fit <- Arima(x, order=c(1, 1, 2), seasonal=list(order=c(2, 0, 1), period=12), include.drift=TRUE)
 preds <- forecast(fit, 12*28, c(0.5,0.95)) # 2-year ahead forecast 
-#preds_value <- ts(preds$mean, start=2023, freq=12)
+autoplot(x) + autolayer(preds)+ ylab("Temperature")+theme_minimal()
+```
 
-preds_value <- ts(preds$mean, start=2023, freq=12)
-preds_high <- ts(preds$upper, start=2023, freq=12)
-preds_low <- ts(preds$low, start=,2023, freq=12)
-autoplot(x) + autolayer(preds_value)+autolayer(preds_high) + autolayer(preds_low)
-```
-```{r, eval=FALSE}
-fit <- Arima(x, order=c(2, 1, 3), seasonal=list(order=c(2, 1, 1), period=12), include.drift = TRUE)
-preds <- forecast(fit, 12*10, c(0.5,0.95)) # 2-year ahead forecast 
-#preds_value <- ts(preds$mean, start=2023, freq=12)
-autoplot(x) + autolayer(preds)
-```
+We can notice that the model's prediction by the function fluctuates less and less and even tends to stabilize so that there is only a linear trend. This remark can be linked to the fact that in the fitted model, $D=0$, and thus, there is no trend linked to the seasonality, as in the previous model. 
+
+We are then entitled to question the seasonality hypothesis by asking ourselves if it is really necessary. 
+
 
 ```{r, eval=FALSE}
-fit <- Arima(x, order=c(2, 1, 3), seasonal=list(order=c(2, 1, 1), period=12))
-preds <- forecast(fit, 12*10, c(0.5,0.95)) # 2-year ahead forecast 
-preds <- ts(preds$fitted, start=1960, freq=12)
-autoplot(x) + autolayer(preds)
+plot(x)
+fit_obs <- arima(x, order=c(1, 1, 2), seasonal=list(order=c(2, 0, 1), period=12))
+lines(seq(1960, 2022.9999, 1/12), fitted(fit_obs), , col="pink")
 ```
 
+# Reconsideration of the Hypothesis
+
+In the previous section, we assumed a lot of hypothesis, we assumed that the trend is linear and that there is seasonality. We will now verify each of them. We will first reconsider the trend hypothesis before the seasonality one. 
+
+## Deeper Study of the form of the Trend
+
+### Generalized Least Squares (GLS)
+
+It is important to recognize that when fitting a linear regression model, one of the fundamental assumptions is that the observations should be independent. However, in cases such as time series data, this assumption is often violated. As a result, the model may produce biased results and the residuals may be correlated, leading to unreliable estimates of standard error, confidence intervals, and p-values.
+
+To address this issue, one possible solution is to use Generalized Least Squares (GLS) instead. GLS accounts for unequal error variances and correlations between different errors, which can help produce more accurate and reliable results in cases where the independence assumption is violated.
+
+In both methods we aim to solve : $y = X\beta + \epsilon$.
+
+Where ordinary least squares (OLS) assumes that the errors are independent and identically distributed, $\epsilon$ ~  $N(0, \sigma^2 I)$, generalized least squares (GLS) assumes that they are correlated and may have unequal variances, $\epsilon$ ~  $N(0, \sigma^2 \Sigma)$.
+
+Then the minimum of $\lVert X\beta - y \rVert$ appears to be $\beta_{\text{GLS}} = (X^T \Sigma X)^{-1} X^T \Sigma^{-1}y$. It is calculated by the Maximum Likelihood" method. However, in this case the matrix $\Sigma$ is not known and therefore has to be estimated from the data with the help of the function `corARMA`. 
+
+### Application 
+
+In this section, our objective is to examine the potential presence of an exponential trend. To achieve this, we initially fit the model: `y~t+ I(t^2) + I(exp(t*0.001))+month` using the `gls` function. Upon examining the summary output, several noteworthy observations can be made. The most significant of these is undoubtedly that the coefficient associated with the exponential term is negative. This observation is critical because while the exponential term may not have a substantial impact at small values, it exerts the greatest influence at larger values, which will have a negative impact on the model in the future, as demonstrated in Figure 4. 
+Therefore, we conclude that the model fitted is not explained by the exponential term and it may be reasonable to exclude this term from the model. 
 
 
+```{r, fig.align="center", fig.cap="Figure 8: Trend fitted with linear, quadratic and exponentiel term."}
+R_struct <- corARMA(form=~t+ I(t^2), p=1) 
+glsfit <- gls(y~t+ I(t^2)  + I(exp(t*0.001))+month, data=lmData, corr=R_struct, method="ML")
+
+newData <- data.frame(t = 757:1680, month=rep(1:12, 77))
+newData$month <- as.factor(newData$month)
+
+plot(x, xlim=c(1960, 2100))
+lines(seq(1960, 2022.9999, 1/12), glsfit$fitted, col="pink")
+lines(seq(2023, 2099.9999, 1/12), predict(glsfit, newData), col="pink")
+```
+
+---
+
+The next step is to analyze the possibly quadratic trend. For that we will fit the model: `y~t+ I(t^2) + I(exp(t*0.001))+month` and by analyzing we found that there are both very significant as can prove the following anova tables for respectively the model with $t$ and $t^2$: 
 
 
+```{r}
+R_struct <- corARMA(form=~t, p=1) 
+glsfit <- gls(y~t+I(t^2) + month, data=lmData, corr=R_struct, method="ML")
+subfit_1 <- gls(y~t+month, data=lmData, corr=R_struct, method="ML")
+subfit_2 <- gls(y~I(t^2)+month, data=lmData, corr=R_struct, method="ML")
+#subfit_2 <- gls(y~I(t^2), data=lmData, corr=R_struct, method="ML")
+#subfit_3 <- gls(y~month, data=lmData, corr=R_struct, method="ML")
+
+#subfit_2 <- gls(y~I(t^2)+month, data=lmData, corr=R_struct, method="ML")
+#anova(glsfit_0, glsfit)
+
+anova(subfit_1, glsfit)
+anova(subfit_2, glsfit)
+#anova(subfit_3, glsfit)
+
+#1-pchisq(2*(glsfit$logLik - subfit_1$logLik), length(coef(glsfit)) - length(coef(subfit_1)))
+#1-pchisq(2*(glsfit$logLik - subfit_2$logLik), length(coef(glsfit)) - length(coef(subfit_2)))
+```
+Therefore we can not deny a possibly quadratic term in the trend. It will be then interesting to construct a model with a polynomial of degree 2 as trend and to compare it with the one obtained before.
 
 
+## Seasonality 
 
+The following question we will address is whether seasonality needs to be incorporated into the trend. To investigate this, we will examine the "month" variable in the regression. The following anova table, which compares the model with and without it, shows that it actually has an impact on the model, and remove it will change the result.  
 
+```{r}
+# Une p-value inférieure à un seuil prédéfini (par exemple, 0,05) indique que la différence entre les modèles est significative.
+
+glsfit <- gls(y~t+month+I(t^2), data=lmData,  corr=R_struct, method="ML")
+glsfit1 <- gls(y~t+I(t^2), data=lmData, corr=R_struct, method="ML")
+glsfit2 <- gls(y~month, data=lmData, corr=R_struct, method="ML")
+#Anova(glsfit, type=2)
+#anova(glsfit1, glsfit)
+anova(glsfit2, glsfit)
+
+```
+
+Moreover the AIC of the first model is `r round(AIC(glsfit), 2)` against `r round(AIC(glsfit2), 2)`, therefore even they are close, the first one stay the lowest. In conclusion, we can not confidently reject this hypothesis, even though we understand that it may not be very significant in the model.
+
+```{r, eval=FALSE}
+setwd("~/Google Drive/EPFL/Applied Stat/StatApp-314577/Project-5")
+data <- read.csv("temperature.csv", sep=",", dec=".", head=TRUE)
+
+y <- as.vector(t(data[, -c(1, 14:19)]))
+y <- ts(y, start=1880, frequency=12)
+
+lmData_tot <- data.frame(y = y,
+                     month = as.factor(rep(1:12,length(y)/12)),
+                      t = 1:length(y))
+
+R_struct <- corARMA(form=~t, p=1) 
+glsfit <- gls(y~t+I(t^2)+exp(t/100), data=lmData_tot, corr=R_struct, method="ML")
+
+plot(x)
+lines(seq(1880, 2022.9999, 1/12), glsfit$fitted, col="pink")
+lines(seq(1880, 2022.9999, 1/12), glsfit1$fitted, col="blue")
+lines(seq(1880, 2022.9999, 1/12), glsfit2$fitted, col="pink4")
+lines(seq(1880, 2022.9999, 1/12), glsfit3$fitted, col="green")
+
+glsfit1 <- gls(y~t+I(t^2), data=lmData_tot, corr=R_struct, method="ML")
+glsfit2 <- gls(y~I(t^2)+exp(t/100), data=lmData_tot, corr=R_struct, method="ML")
+glsfit3 <- gls(y~t+exp(t/100), data=lmData_tot, corr=R_struct, method="ML")
+
+```
+
+# Conclusion
+
+In conclusion, in this study we began by constructing a SARIMA model with a linear trend, which inevitably gave us increasing results for the future. Nevertheless, after a closer examination of the assumptions, we noticed that while the hypothesis on seasonality seems justified, the linearity assumption is more controversial. Indeed, we rejected the hypothesis of an exponential trend, but could not reject that of a quadratic trend. It would have been interesting to fit a quadratic model on this trend shape in order to compare it with the previous model. 
+
+However, in both cases, and even more so in the second, we can observe that temperatures are increasing rapidly, which is increasingly concerning for the future and makes us reflect on how to change things.
 
 
 
