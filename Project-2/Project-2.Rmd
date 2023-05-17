@@ -1,7 +1,22 @@
 ---
-title: "Project-2 : Online shopping"
-output: html_document
-Student : "Louise Largeau"
+title: "Online Shopping"
+subtitle: |
+  | Project 2
+#author : "LAST NAME First name"
+#date: "March 19, 2023"
+output: 
+  html_document:
+    theme: cosmo
+    highlight: zenburn
+    toc: true
+    number_sections: true
+    toc_float:
+      collapsed: false
+header-includes:
+  - \usepackage{bm}
+  - \newcommand{\E}{\mathbb{E}}
+  - \newcommand{\R}{\mathbb{R}}
+#bibliography: biblio.bib
 ---
 
 ```{r setup, include=FALSE}
@@ -18,13 +33,13 @@ library(readr)
 library(pROC)
 ```
 
-Technology is a tool largely used today. It is universally acknowledged that we can do anything with the internet in the XXI century, including buying everything you could possibly want. This will be the theme of our report today. 
+Technology has changed many fields, like healthcare, education, and transportation, by bringing in new and creative ideas. One particular thing that has become very important in our daily lives is the Internet. It has completely changed the way we work, communicate with others or purchase items. E-commerce makes it simpler than ever to buy things without leaving our homes. This ease has made online shopping very popular among people of all ages and backgrounds. Millions of transactions happen online every day.
+ 
+In this perspective, we will analyse the data set "2_online_shopping" and find a model explaining customer behavior on an e-commerce website.
 
-In this perspective, we will therefore analyze the data set "2_online_shopping", which lists several features of 11630 observations. (A deeper description of the data will be given in the first part of this report.)
+To achieve this goal, we will proceed in 5 parts. In the first two parts, we will describe, explore and treat the data set to understand some clients' behaviors and obtain some initial intuitions. Then in the third part, we will identify a suitable model at we will carefully interpret its results. We will then carefully analyze the model's performance and evaluate its effectiveness. And we will end by discuss about the model and its implications.
+To further enhance our analysis, we will introduce a sixth part, where we will explore a possibly better model. 
 
-The **goal** of this report is to find a model which tries to explain customer behavior on the e-commerce website and evaluate the prediction performance of our model.
-
-To this end, we will proceed in 3 parts. In the first one, we will explore and treat the data to understand some client's behaviors and obtain some intuitions. Then in the second part, we will try to find an appropriate model. This will lead us to the last part, the interpretation and discussion of the model. 
 
 ```{r, load data and rename the variable}
 # Download the Data
@@ -60,11 +75,11 @@ Data$traffic_type[Data$traffic_type %in% c(5:12, 14:20)] <- 6
 Data$traffic_type[Data$traffic_type == 13] <- 5
 ```
 
-## Description of the Data Set
+# Description of the Data Set
 
-Given the subject, we can identify the variable of interest as the 'purchase' variable, a binary one, it takes the value "TRUE" if a purchase has been made and "FALSE" otherwise. We therefore already understand that we will have to fit a logistic model, but let's first concentrate on the data set characteristics. 
+We identify the variable of interest as the `purchase` variable, a binary one, it takes the value "TRUE" if a purchase has been made and "FALSE" otherwise. The proportion of "TRUE" in this data can be calculated as `r sum(Data$purchase==TRUE)/ length(Data$purchase)`. The type of the variable of interest indicates that a logistic model might be appropriate for the problem at hand. However, it is important to examine all the features of the dataset before proceeding with the model.
 
-The customer behavior on the e-commerce website can intuitively be explained by many factors: the date (for instance if we approach Valentine's Day), the design of the website, and the customer profile, ... 
+The customer behavior on the e-commerce website can intuitively be explained by many factors: the type of product sales, the date (for instance if we approach Valentine's Day), the design of the website, the customer profile, ... 
 
 This is the reason why this data set, which aims to be as representative as possible, regroups a lot of features, 17 in total with a large diversity. As numerical variables we have : 
 
@@ -92,10 +107,9 @@ And as categorical variables :
 * Traffic Type (`traffic_type`) - where from the user arrived at the site (there is 6 different arrived possible and the last one represent the "others" category)
 * Visitor Type (`visitor_type`) - with 3 levels (new visitor, returning visitor and the other category)
 
-Figure 1 shows the data, where the following variables have been log - transformed : `n_product_page`, `page_values`, `time_admin_page`, `time_info_page`, and  `time_product_page`. Indeed, without this transformation, one could wrongly assumed that most of the customers didn't have spend time on the information page; while there is only `r sum(Data$time_product_page==0)/length(Data$time_product_page)*100`% who didn't. This impression is due to the fact that there is some very high value (like `r max(Data$time_product_page)`) which make the others insignificant.  
-It is the same idea for the time spend on informative and administration pages even if the proportion of people who didn't is more significant (`r sum(Data$time_info_page==0)/length(Data$time_info_page)*100`% and `r sum(Data$time_admin_page==0)/length(Data$time_admin_page)*100`% respectively).
+The data presented in Figure 1 has been log-transformed for the following variables: `n_product_page`, `page_values`, `time_admin_page`, `time_info_page`, and `time_product_page`. Indeed, without this transformation, one could wrongly assumed that most of the customers didn't have spend time on the product page; while there is only `r sum(Data$time_product_page==0)/length(Data$time_product_page)*100`% didn't. This impression is due to the presence of very high values, such as `r max(Data$time_product_page)`, which render the other values insignificant. A similar phenomenon is observed for the time spent on informative and administrative pages.
 
-One remark to make is that we actually apply the log(. +1) transformation in each case, because each of the five variables that must be transformed take at least once the value zero. 
+Note: We apply the log(. +1) transformation in each case because each of the five variables takes at least once the value zero. 
 
 ```{r, log transformations}
 Data2 <- Data
@@ -108,7 +122,7 @@ Data2$time_product_page <- log(Data2$time_product_page +1)
 
 ```{r}
 # month=as.numeric(month), 
-Data3 <- Data
+Data3 <- Data2
 Data3$month[Data3$month == "Jan"] <- 1
 Data3$month[Data3$month == "Feb"] <- 2
 Data3$month[Data3$month == "Mar"] <- 3
@@ -129,14 +143,6 @@ Data3$visitor_type [Data3$visitor_type == "Other"] <- 3
 Data3$visitor_type <- as.numeric(Data3$visitor_type)
 ```
 
-```{r, eval=FALSE}
-# Without the log transform
-Data3 %>% mutate(weekend=as.numeric(weekend), 
-                operating_sys = as.numeric(operating_sys), 
-                browser = as.numeric(browser), region = as.numeric(region), 
-                traffic_type = as.numeric(traffic_type)) %>% pivot_longer(everything()) %>%
-  ggplot(aes(value)) + facet_wrap(~ name, scales = "free") + geom_histogram()
-```
 
 ```{r, fig.align="center", fig.cap="Figure 1: Histograms for the individual variables, where `n_product_page`, `page_values`, `time_admin_page`, `time_info_page`, and  `time_product_page` are log-transformed."}
 Data2$month <- Data3$month
@@ -153,21 +159,22 @@ Data2$visitor_type <- as.factor(Data2$visitor_type)
 
 ```
 
-In this figure, we can already notice some habits of potential customers: they spend much more time on product pages than on administration and information ones. This may seem logical since they consult product pages much more than the others. 
+In this set of plot permit to highlight some habits of potential customers. Indeed, it seems like they spend much more time on product pages than on administration and information ones, where the majority of the customer didn't go. This may seem logical since they consult product pages much more than the others. 
 
-We can also observe that the number of "other visitor" is underrepresented in the data  as well as the number of value around a special day. Or some month where we even have no observation like january or april. 
+One can observe that the number of "other visitor" is underrepresented in this data set,  as well as a lake of observation during a special day or in certain months such as January or April, where we have no observation. However, the majority of the observations seems to be "new customer". 
 
-To recall, we aim to explain the variable "Purchase" of the data set and the exact proportion of "TRUE" in our data is : `r sum(Data$purchase==TRUE)/ length(Data$purchase)`. 
+# Exploration of the Data
 
-## Exploration of the Data
+In this part, we present some interesting detail results that we observed during the exploration part about three features.  
 
-In this part, we present some interesting results that we observed during the exploration part. 
+## Value of pages consulted 
 
-### Page values 
+The first feature we will discuss is the variable `page_values`. A very interesting one, since it is intuitive to assume that the higher the average page value of the visited pages, the more likely the client is to make a purchase.
+However it appears that most of the observations in our data set have a zero average. That is why on the previous graph, we observe a large spike at 0, that prevents us from clearly discerning the other values. 
 
-The first one is about the variable `page_values`. One can remark that most of the observations in our data set have a zero average. But intuitively the more the average page value of pages visited is high the more the client will be inclined to buy. And if we focus the analysis on the non-zero average observations (which represent `r sum(Data$page_values !=0)/length(Data$page_values)*100`%), we can see that it is what happens in Figure 2.
+Thus, it may be interesting to concentrate on the observations that are non-zero average, which account for more than `r sum(Data$page_values !=0)/length(Data$page_values)*100`% of the dataset. The Figures below illustrate this.
 
-```{r, fig.align="center", fig.cap="Figure 2: Histograms for the non-zero `page_values` variable with no transformation on the left and log-transformation on the rigth"}
+```{r, fig.align="center", fig.cap="Figure 2: Histograms for the non-zero `page_values` variable with no transformation on the left and log-transformation on the rigth."}
 
 g1 <- ggplot(Data[which(Data$page_values!=0),])+
   geom_histogram(aes(x=page_values, color=purchase))+
@@ -183,18 +190,118 @@ plot_grid(g1, g2, ncol = 2, nrow = 1)
 
 ```
 
-On these two histograms, we can also see the effects of the log transformation. Indeed, the log transformation reduces the skewness of our original data: large values are less far apart while small values are farther apart.
 
-But we most interesting thing that we remark on in this graph is that the proportion of "TRUE" purchases is very high in general and especially in very high averages. 
-If we take a look at the numbers we observe that there is actually `r sum((Data$page_values !=0) * (Data$purchase)) / sum(Data$purchase)*100`% of the client who purchased something have consulting positive page values. 
+On these two histograms, the effects of the log transformation appear clearly. Indeed, the log transformation reduces the skewness of our original data: large values are less far apart while small values are farther apart, which makes the graph much more readable.
 
-So in our regression, we can expect that the `page_values` variable has an impact, or explain the `purchase` variable.
+Moreover these histograms confirm our first intuition, since the proportion of "TRUE" purchases is very high in general and especially in high averages. There is actually `r round(sum((Data$page_values !=0) * (Data$purchase)) / sum(Data$purchase)*100, 2)`% of the client who purchased something that has consulting positive page values. This is visible in the graph by observing the proportion of blue against purple. Another point to note is that although this proportion is high for all, it seems that the higher the average of the pages consulted, the greater the probability of making a purchase. The last peaks on the graph are almost entirely blue.
 
-### Special Day 
+All this observations allow us to think that in our regression, the `page_values` variable will have an impact or explain the `purchase` variable. At this point in the analysis is it impossible to evaluate the impact of a such variable. 
 
-Moreover, we can observe something similar with the `special_day` variable, as shown in Figure 3. Indeed, we can even see that when we are very close to a special day, every person, who arrives on the website, buy something.
+```{r, fig.align="center", fig.cap="Figure 3: Propention of Proportion of people who made a purchase in each 0.2 interval", eval=FALSE}
 
-```{r, fig.align="center", fig.cap="Figure 2: Histograms for the non-zero `special_day` variable"}
+seq <- seq(0, 6, 0.2)
+page_value_prop <- rep(0, length(seq))
+for (i in 1:length(seq)){
+  Data3 <- Data[log(Data$page_values+1)<seq[i+1],]
+  Data3 <- Data3[log(Data3$page_values+1)>seq[i],]
+  page_value_prop[i] <- sum(Data3$page_values*(Data3$purchase))/sum(Data3$page_values)
+}
+
+ggplot()+
+  geom_point(aes(x=seq(0.1, 6.1, 0.2), y=page_value_prop))+
+  geom_line(aes(x=seq(0.1, 6.1, 0.2), y=page_value_prop), linetype = "dashed")+
+  #geom_histogram(aes(x=log(time_admin_page+1), y=..density.., color=purchase, alpha=0.1),bins=length(seq), data=Data[Data$time_admin_page>0,])+
+  xlab("log(page_value + 1)")+
+  ylab("Proportion")+
+  theme_minimal()
+
+
+
+
+```
+
+## Product Page Visits Count
+
+One last variable we wanted to talk about is `n_product_page`, an interesting variable that, like `page_values`, we can suspect to have an impact on whether a purchase is made or not. Intuitively, the fewer product pages a customer consults, the less likely they are to make a purchase, unless they know exactly what they want. However, this effect is difficult to perceive, as we can see in the left histogram. To get a better idea, we separated the data by range of product pages consulted, and for each interval, we estimated the proportion of people who made a purchase. This is what the right plot represents, and we can clearly see an increase that confirms our hypothesis. Then it is a variable that can have a link too with the variable of interest. 
+
+```{r, fig.align="center", fig.cap="Figure 4: (On the Rigth) Histogram for the non-zero `time_admin_page` variable. And (on the Left) Propention of Proportion of people who made a purchase in each 0.5 Time interval", eval=FALSE}
+g1 <- ggplot(Data[Data$time_admin_page>0,])+
+  geom_histogram(aes(x=log(time_admin_page+1), color=purchase))+
+  theme_minimal()
+
+seq <- seq(0, 8, 0.5)
+time_admin_prop <- rep(0, length(seq))
+for (i in 1:length(seq)){
+  Data3 <- Data[log(Data$time_admin_page+1)<seq[i+1],]
+  Data3 <- Data3[log(Data3$time_admin_page+1)>seq[i],]
+  time_admin_prop[i] <- sum(Data3$time_admin_page*(Data3$purchase))/sum(Data3$time_admin_page)
+}
+
+g2 <- ggplot()+
+  geom_point(aes(x=seq(0.25, 8.25, 0.5), y=time_admin_prop))+
+  geom_line(aes(x=seq(0.25, 8.25, 0.5), y=time_admin_prop), linetype = "dashed")+
+  #geom_histogram(aes(x=log(time_admin_page+1), y=..density.., color=purchase, alpha=0.1),bins=length(seq), data=Data[Data$time_admin_page>0,])+
+  xlab("log(time_admin_page + 1)")+
+  ylab("Proportion")+
+  theme_minimal()
+
+
+plot_grid(g1, g2, ncol = 2, nrow = 1)
+
+```
+```{r, eval=FALSE}
+g1 <- ggplot(Data[Data$time_info_page>0,])+
+  geom_histogram(aes(x=log(time_info_page+1), color=purchase))
+
+
+seq <- seq(0, 8, 0.5)
+time_info_prop <- rep(0, length(seq))
+for (i in 1:length(seq)){
+  Data3 <- Data[log(Data$time_info_page+1)<seq[i+1],]
+  Data3 <- Data3[log(Data3$time_info_page+1)>seq[i],]
+  time_info_prop[i] <- sum(Data3$time_info_page*(Data3$purchase))/sum(Data3$time_info_page)
+}
+
+g2 <- ggplot()+
+  geom_point(aes(x=seq(0.25, 8.25, 0.5), y=time_info_prop))
+
+plot_grid(g1, g2, ncol = 2, nrow = 1)
+
+```
+
+```{r, fig.align="center", fig.cap="Figure 3: (On the Rigth) Histogram for the non-zero `n_product_page` variable. And (on the Left) Proportion of people who made a purchase in each 0.2 interval."}
+g1 <- ggplot(Data[Data$n_product_page>0,])+
+  geom_histogram(aes(x=log(n_product_page+1), color=purchase))
+
+
+seq <- seq(0, 6, 0.2)
+time_info_prop <- rep(0, length(seq))
+for (i in 1:length(seq)){
+  Data3 <- Data[log(Data$n_product_page+1)<seq[i+1],]
+  Data3 <- Data3[log(Data3$n_product_page+1)>seq[i],]
+  time_info_prop[i] <- sum(Data3$n_product_page*(Data3$purchase))/sum(Data3$n_product_page)
+}
+
+g2 <- ggplot()+
+  geom_point(aes(x=seq(0.1, 6.1, 0.2), y=time_info_prop))+
+  geom_line(aes(x=seq(0.1, 6.1, 0.2), y=time_info_prop), linetype = "dashed")+
+  #geom_histogram(aes(x=log(time_admin_page+1), y=..density.., color=purchase, alpha=0.1),bins=length(seq), data=Data[Data$time_admin_page>0,])+
+  xlab("log(time_admin_page + 1)")+
+  ylab("Proportion")+
+  theme_minimal()
+
+plot_grid(g1, g2, ncol = 2, nrow = 1)
+
+```
+
+
+
+## Special Day 
+
+Moreover, one last thing that we notice is related to the variables `special_day` and `weekend`. In Figure 4, the last blue spike shows that every Special Day (such as Christmas or Valentine's Day) where we registered an entry on the website happened to fall on a weekend. At this point in the analysis, we don't know if it is a useful observation, but since we aim to understand how the odds of purchase are affected by date-related features, it is a result we can keep in mind.
+
+
+```{r, fig.align="center", fig.cap="Figure 4: Histograms for the non-zero `special_day` variable"}
 
 ggplot(Data[c(Data$special_day>0),])+
   geom_histogram(aes(x=special_day, color=weekend))+
@@ -203,16 +310,14 @@ ggplot(Data[c(Data$special_day>0),])+
 
 ```
 
-This might encourage us to conclude as in the previous part, that the `special_day` variable will have a big impact on the `purchase` variable. However, we have to be careful, because the "zero special days" represents `r sum(Data$special_day !=0)/length(Data$special_day)*100`% of our observations, which is very little. 
 
+# Logistic Regression 
 
-## Logistic Regression 
+## Theory Part 
 
-### Few Words on the Theory
+As mention before, the variable of interest is a binary variable, and the most popular method to fit this kind of variables is the logistic regression. Indeed, it aims to determine the probability of a certain event occurring (in our case the "purchase event") based on the characteristic of several independent variables. 
 
-As mention before, the variable of interest is a binary variable, and the principal method to fit this kind of variables is to make a logistic regression. Indeed, it aims to determine the probability of a certain event occurring (in our case the "purchase event") based on the characteristic of several independent variables. 
-
-Since the "purchase" variable follows the Bernoulli distribution, it is of the exponential type. Indeed, the density can be written :
+Furthermore, the Bernoulli distribution is of the exponential type. Indeed, the density can be written : 
 
 $$f(y) = \pi^y (1 - \pi)^{1-y}$$
 
@@ -222,14 +327,15 @@ $$f(y)=\exp(y \log(\frac{\pi}{1-\pi}) + \log(1-\pi))$$
 $$f(y) = \exp(y \theta + \log(1 + e^\theta))$$
 where $\theta = \log(\frac{\pi}{1 - \pi})$.
 
-From here we can see that $\mu = \mathbb{E}[Y] = \pi = \frac{1}{1 + e^{-\theta}}$ and then obtain the canonical link function : $g(\mu)=\log(\frac{\mu}{1-\mu}) = \theta = X^T_n \beta$.
+From here we can see that $\mu = \mathbb{E}[Y] = \pi = \frac{1}{1 + e^{-\theta}}$ and then obtain the canonical link function : $g(\mu)=\log(\frac{\mu}{1-\mu}) = \theta = X^T_n \beta$, which is called the logit function.
 
 
 The $\beta_k$ are called the logit coefficients and reflect the size of the influence of the independent variables.
 
 They will be estimated by maximizing the likelihood.
 
-### Model Selection
+## Model Selection
+
 ```{r}
 Data_final <- Data
 Data_final$n_product_page <- log(Data_final$n_product_page +1)
@@ -256,6 +362,35 @@ anova(model_entire2, test="LRT")
 print("comparaison : ")
 anova(model_full, model_entire2, test="LRT")
 
+```
+
+To fit a model Generalized Linear Model (GLM) there is a very useful function in R, the `glm` from the package (stats). We therefore begin with the full model (with every variables), more specifically with the formula : 
+
+`purchase` ~ `n_admin_page` + `time_page_page` + `n_info_page` + `time_product_page` + `n_product_page` + `time_product_page` + `special_day` + `bounce_rate` + `exit_rate` + `page_values` + `month` + `weekend` + `operating_sys` + `browser` + `region` + `traffic_type` + `visitor_type`
+
+Therefore it appears that some variables don't add much to the model, i.e have a high p-value. These variables are: `browser` and `region`. We then immediately fit another model without them. This action is encouraged by the 0.6765 p-value obtained by the Likelihood Ration Test as shows the anova table below.
+
+```{r}
+model_full <- glm(purchase~., data=Data_final, family="binomial")
+model_entire2 <- glm(purchase~. -browser -region , data=Data_final, family="binomial") 
+anv <- anova(model_full, model_entire2, test="LRT", drop.levels = TRUE)
+
+```
+
+```{r}
+library(knitr)
+library(kableExtra)
+tab <- matrix(c(round(anv$`Resid. Df`, 2), round(anv$`Resid. Dev`, 2), "", -10, "", round(anv$Deviance[2], 2), "", round(anv$`Pr(>Chi)`[2], 2)),nrow = 2, ncol=5, byrow=FALSE)
+colnames(tab) <- c("Resid. Df","Resid. Dev","Df", "Deviance", "Pr(>Chi)")
+kable(tab, align="c", caption = "Table 1: Anova table to compare the full model and the one without the variables `browser` and `region`", table.attr = "style='width:50%;'", booktabs=T) %>% kable_styling(position = "center")
+  
+```
+
+On the other hand, it also emphasizes certain significant variables. One can find, in particular, the page_values (without surprise). It could then make sense to add an interaction between the average of page values and the number of product, informative, and administrative pages consulted. This would indeed lead to new variables that would represent, respectively, the value of the product, informative, and administrative pages consulted. And as we aim to explain the odds of purchase affected by date-related features it can also be interesting to also add an interaction between `page_values` and `month`, `weekend`, `special_day`. 
+
+Moreover, after an analyze of the residual plots, we could suggest allowing a quadratic dependence of the time spent on product pages, which indeed turns out to be significant.
+
+```{r, eval=FALSE}
 # Add some interactions
 model_entire3 <- glm(purchase~. -browser -region + I(time_product_page^2) + page_values * (n_product_page + n_admin_page + n_info_page) + page_values * month + page_values * weekend + page_values * special_day, data=Data_final, family="binomial") 
 print("AIC With some interactions : ")
@@ -272,29 +407,105 @@ AIC(model_entire6)
 anova(model_entire3, model_entire6, test="LRT")
 ```
 
-We begin with the full model (with every variable). It, therefore, appears that some variables don't add much to the model, i.e have a high p-value. These variables are: `browser` and `region`. We then immediately fit another model without them. This action is encouraged by the 0.6765 p-value obtained by the Likelihood Ration Test. We can also note that the variable `weekend` is not very significant neither with a p-value of 0.24. 
-
-On this other side, it also emphasizes certain significant variables. One can find in particular the `page_values` (without surprise). It could then make sense to add an interaction between the average of page values and the number of product, informative, and administrative pages consulted. And as we aim to explain the odds of purchase affected by date-related features it can also be interesting to also add an interaction between `page_values` and `month`, `weekend`, `special_day`. 
-Moreover, the residual plot could suggest allowing a quadratic dependence of the time spent on product pages, which turns out to be significant.
-
 By adding all these interactions and the quadratic term we can remark that the AIC value went from 6145.216 (when we already dropped the 2 first variables) to 5741.143. 
 
-Moreover, even if the Anova table suggests that every variable is significant we can test another model where we drop the less significant one, i.e  `time_info_page`, `weekend`, and `operating_sys`. We indeed notice that the interaction between `page_values` and `weekend` which seems to be the less significant one. And hence obtain a 0.424 p-value by the Likelihood Ration Test. 
+Moreover, even if the Anova table suggests that every variable is significant we can test another model where we drop the less significant one, i.e  `time_info_page`, `weekend`, and `operating_sys`. We also notice that the interaction between `page_values` and `weekend` seems to be the less significant one. And hence obtain a 0.424 p-value by the Likelihood Ration Test as shown in the following table : 
 
-[Note : All the reasoning is included in the code, which is just not executed]
+```{r}
+# Add some interactions
+model_entire3 <- glm(purchase~. -browser -region + I(time_product_page^2) + page_values * (n_product_page + n_admin_page + n_info_page) + page_values * month + page_values * weekend + page_values * special_day, data=Data_final, family="binomial") 
+
+model_entire6 <- glm(purchase~. -browser -region - time_info_page - weekend - operating_sys + I(time_product_page^2) + page_values * (n_product_page + n_admin_page + n_info_page) + month*page_values +page_values*special_day, data=Data_final, family="binomial") 
+
+anv <- anova(model_entire3, model_entire6, test="LRT", drop.levels = TRUE)
+```
+```{r}
+library(knitr)
+library(kableExtra)
+tab <- matrix(c(round(anv$`Resid. Df`, 2), round(anv$`Resid. Dev`, 2), "", -10, "", round(anv$Deviance[2], 2), "", round(anv$`Pr(>Chi)`[2], 2)),nrow = 2, ncol=5, byrow=FALSE)
+colnames(tab) <- c("Resid. Df","Resid. Dev","Df", "Deviance", "Pr(>Chi)")
+kable(tab, align="c", caption = "Table 2: Anova table to compare the model with all the interactions and the one without the ones cited", table.attr = "style='width:50%;'", booktabs=T) %>% kable_styling(position = "center")
+  
+```
+
+---
+
+In conclusion, we obtain the model :
+
+`purchase` ~ `page_values` * (`n_admin_page` + `n_info_page` + `n_product_page` + `month` + `special_day`) + `time_product_page` + `time_admin_page` + `bounce_rate` + `exit_rate` +  `traffic_type` + `visitor_type` + `I(time_product_page^2)`
 
 The summary of our final model is then : 
 
 ```{r}
 
-modell <- glm(purchase~. -browser -region - time_info_page - weekend - operating_sys + I(time_product_page^2) + page_values * (n_product_page + n_admin_page + n_info_page) + month*page_values +page_values*special_day, data=Data_final, family="binomial") 
+modell <- glm(purchase~. -browser -region - time_info_page - weekend - operating_sys + I(time_product_page^2) + page_values * (n_product_page + n_admin_page + n_info_page) + month*page_values +page_values*special_day , data=Data_final, family="binomial") 
 
 summary(modell)
 ```
 
 In the summary, some variables like `special_day`, which was significant in the anova table, don't appear this way in the summary. But as we mention in the exploration part, this may be due to the lack of data and so we decide to keep it in the model. Another one is `bounce_rate`, however removing it from the model increases the AIC, so we choose to keep it as well. 
 
-## Residual Diagnostic 
+## Interpretation of the Coefficients 
+
+In theory, the equation associated to our model looks like : 
+$$z_n = X_n \beta = \beta_1 + X_{n,2} \beta_2 + ... + X_{n, p} \beta_p$$
+where every $\beta$ is a coefficient associated to one variable (or one level in the case of a categorical variable) and then 
+
+$$P(Y=1 | X = X_n) = \frac{1}{1 + \exp(-z_n)}$$
+
+Hence the idea is therefore that negative coefficient will make decrease the probability of purchasing something if the feature corresponding is increasing. While in the other case, a positive coefficient will make increase the probability.
+
+However the precise interpretation depend on the variable, we have to distinguish the intercept, from the numerical variables and the categorical ones. 
+
+---
+
+**The intercept**
+
+We know that the intercept captures odd of success with zero regressors, so by replacing in the previous formula we obtain : 
+$$[\pi_0 = ] \space \space \space \space P(Y=1 | X = (0, ..., 0)) = \frac{1}{1 + \exp(-\beta_1)}$$
+So $\exp(\beta_1) = \frac{\pi_0}{1 - \pi_0}$. 
+
+---
+
+**Numerical Variables**
+
+For numerical variable, the coefficient captures odds ratio (between two observations that differ by 1 in the corresponding regressor). Let's take for example the feature `n_admin_page` ($nap$): 
+
+$$z_n = X_n \beta = \beta_1 + X_{n,nap} \beta_{nap} + ... $$
+
+So if we take two different observations such that : $X_1 = (x_{1, nap}, ... , x_{1, time_prod})$ and $X_2 = (x_{1, nap} +1, ... , x_{1, time_prod})$. We obtain :
+
+- $\pi_1 =  P(Y=1 | X = X_1)$, which leads to $\beta^T X_1 = \log(\frac{\pi_1}{1 - \pi_1})$
+
+- $\pi_2 =  P(Y=1 | X = X_2)$, which leads to $\beta^T X_2 = \log(\frac{\pi_2}{1 - \pi_2})$
+
+And by subtracting we obtained : $\exp(\beta_{nap}) = \frac{\pi_1 (1 - \pi_2)}{\pi_2 (1 - \pi_1)}$ or $\log(\frac{\pi_2}{1 - \pi_2}) = \log(\frac{\pi_0}{1 - \pi_0}) + \beta_{nap}$ which leads to $\frac{\pi_2}{1 - \pi_2} = \frac{\pi_0}{1 - \pi_0} \exp(\beta_{nap})$. So as the coefficient of this feature is  0.07, we can conclude that the addition of one administration page is associated with a 7% increase in the odds of purchasing something (as $\exp(0.07) = 1.07$) holding all other predictors constant. 
+
+--- 
+
+But for some variables like `page_values` we did a log transformation, and we have to take it into account in our interpretation : 
+
+$$z_n = X_n \beta = \beta_1 + X_{n,nap} \beta_{nap} + \log(X_{n,pv} +1) \beta_{pv} +  ... $$
+And so a one unit increase in $\log(X_{n,pv} +1)$ corresponds to a multiplication of the odds by 6.05 (as the coefficient of the page values is 1.8 and $\exp(1.8) = 6.05$). 
+
+---
+
+**Categorical Variables**
+
+For categorical variables, let's take for example the feature `traffic_type` : 
+
+$$z_n = X_n \beta = \beta_1 + I_{(X_{n,tt}==2)} \beta_{tt2} + ... + I_{(X_{n,tt}==6)} \beta_{tt6}  +... $$
+In this example, the reference categorical is the "traffic type 1". And each coefficient represents the difference in log - odds of purchasing something compare to the odds's reference. We indeed have for instance : $X_1 = (tt1, x_{pv}... )$ and $X_2 = (tt2, x_{pv}... )$. We obtain :
+
+- $\pi_1 =  P(Y=1 | X = X_1)$ leads to $\beta^T X_1  = \log(\frac{\pi_1}{1 - \pi_1})$
+
+- $\pi_2 =  P(Y=1 | X = X_2)$ leads to $\beta^T X_2 = \log(\frac{\pi_2}{1 - \pi_2})$
+
+And then by subtracting : $$\beta_{tt2} = \log(\frac{\pi_2}{1 - \pi_2}) - \log(\frac{\pi_1}{1 - \pi_1})$$
+
+# Model Checking 
+
+## Residuals Diagnostic 
 
 ```{r}
 #plot(model)
@@ -315,7 +526,11 @@ Data_final%>%
 
 As the response variable is binary, we can see that as expected residual are organized in two clouds in every plots. We do not observe anything alarming here, moreover by inspecting the cook distance of the observations, we confirm that none has a very high value which is good news. 
 
-## AUC Curve 
+## Model Evaluation
+
+**AUC Curve**
+
+An important concept in evaluating binary classification is the ROC Curve. It is a curve that plots the true positive rate against the false positive rate. A more suitable model will approach the upper-right corner of the curve, where the true positive rate is close to 1 and the false positive rate is close to 0. An effective and common method is then to calculate the area under this ROC Curve. The model with the largest area is chosen. Additionally, it can be added that the area under the curve typically ranges from 0.5 to 1. If a curve falls below 0.5, one can simply invert the predicted values of the algorithm. For example, if a curve passes through the lower-right corner, it indicates a very good model that predicts the opposite value. In this case, an area of 0.5 under the curve represents the worst model with completely random classification.
 
 ```{r, function AUC}
 AUC_eval <- function(gmodel,Data){
@@ -331,11 +546,22 @@ AUC_eval <- function(gmodel,Data){
   }
   return(mean(AUC))
 }
+
+# One important notion of logistic regression is the ROC curve, which is the function of the true positive rate against the false positive rate. Hence the more the curve is high the more the model is a better representation. Then one way to measure the quality of the test is to calculate the area under the curve. It is a number between 0.5 and 1, and we wish it to be very close to 1. 
+
 ```
 
-One important notion of logistic regression is the ROC curve, which is the function of the true positive rate against the false positive rate. Hence the more the curve is high the more the model is a better representation. Then one way to measure the quality of the test is to calculate the area under the curve. It is a number between 0.5 and 1, and we wish it to be very close to 1. 
 
-To calculate it we use the available function, and obtain for our final model: `r AUC_eval(modell, Data_final)`. This is higher than the Benchmark AUC (0.895). 
+To calculate it we use the function provided in the slides of the course, and we obtain for our final model: `r round(AUC_eval(modell, Data_final), 2)`, which is higher than the Benchmark AUC (0.895). 
+
+--- 
+
+**Residual Deviance**
+
+When fitting a generalized linear model, such as in this case for a classification model, it is common to use residual deviance as an evaluation measure. Residual deviance is calculated as the difference between the log-likelihood of the fitted model and the log-likelihood of the saturated model. Therefore, a lower residual deviance indicates a better model.
+
+---
+
 
 We now summarize all the results of our model in the following table. 
 
@@ -344,77 +570,55 @@ library(knitr)
 library(kableExtra)
 tab <- matrix(c(AIC(modell), modell$deviance, AUC_eval(modell, Data_final)),nrow = 1)
 colnames(tab) <- c("AIC","Residual Deviance","AUC value")
-kable(tab, align="c", caption = "Table 1: AIC, Residual Deviance and AUC value of our final model.", table.attr = "style='width:50%;'", booktabs=T) %>% kable_styling(position = "center")
+kable(tab, align="c", caption = "Table 3: AIC, Residual Deviance and AUC value of our final model.", table.attr = "style='width:50%;'", booktabs=T) %>% kable_styling(position = "center")
   
 ```
 
-## Interpretation
+# Discussion
 
-In theory, the equation associated to our model looks like : 
-$$z_n = X_n \beta = \beta_1 + X_{n,2} \beta_2 + ... + X_{n, p} \beta_p$$
-and then 
-$$P(Y=1 | X = X_n) = \frac{1}{1 + \exp(-z_n)}$$
+In conclusion, in this report, we fitted a model to understand the behavior of customer in the website. And according to the previous part it seems to be a good one as the AUC is close to 1, and there is an acceptable residual deviance.  
 
-Hence the idea is therefore that negative coefficient will make decrease the probability of purchasing something if the feature corresponding is increasing. While in the other case, a positive coefficient will make increase the probability.
+By analyzing the summary and the explication given in the following part, we can now understand the behavior of customers. For example, we notice that the coefficient of the variable AA is negative, which implies that the more time a person spends on these pages, the less likely they are to buy. However, the positive coefficient in front of BB implies that when a person consults these pages, he is already more likely to buy. This could be translated by the fact that when a person has decided to buy and goes to the administrative pages, the purchase will be abandoned if they are too complex or long. So, it might be useful for the company to check the efficiency and clarity of these pages. 
 
-However the precise interpretation depend on the variable, we have to distinguish the intercept, from the numerical variables and the categorical ones. 
+Of course, we also noticed some results that we remarked in the exploration part, like the more the average value of pages visited is high the more the probability of purchasing something is high. Nevertheless, this result should be emphasized twice. This variable plays a determining role in our model; it is indeed very significant and is present in many interactions. This means that the company must support and research as much as possible on this criterion to hope to improve its sales. 
 
-**The intercept**
+But some surprising results occurs like the three coefficients of the model's interactions with the pages are negative. However, since they represent the sum of the values of the observed pages in each category (and on average), one would expect the coefficients to be positive. But we can assume that this interaction is intended to attenuate the large effect of the page values variable.   
 
-We know that the intercept captures odd of success with zero regressors, so by replacing in the previous formula we obtain : 
-$$[\pi_0 = ] \space \space \space \space P(Y=1 | X = (0, ..., 0)) = \frac{1}{1 + \exp(-\beta_1)}$$
-So $\exp(\beta_1) = \frac{\pi_0}{1 - \pi_0}$
-
-**Numerical Variables**
-
-For Numerical variable, the coefficient captures odds ratio (between two observations that differ by 1 in the corresponding regressor). Let's take for example the feature `n_admin_page` : 
-
-$$z_n = X_n \beta = \beta_1 + X_{n,nap} \beta_{nap} + ... $$
-
-So if we take two different observation such that : $X_1 = (x_{1, nap}, ... , x_{1, time_prod})$ and $X_2 = (x_{1, nap} +1, ... , x_{1, time_prod})$. We obtain :
-
-- $\pi_1 =  P(Y=1 | X = X_1) $ leads to $\beta^T X_1 = \log(\frac{\pi_1}{1 - \pi_1})$
-
-- $\pi_2 =  P(Y=1 | X = X_2) $ leads to $\beta^T X_2 = \log(\frac{\pi_2}{1 - \pi_2})$
-
-And by subtracting we obtained : $\exp(\beta_{nap}) = \frac{\pi_1 (1 - \pi_2)}{\pi_2 (1 - \pi_1)}$ or $\log(\frac{\pi_2}{1 - \pi_2}) = \log(\frac{\pi_0}{1 - \pi_0}) + \beta_{nap}$ which leads to $\frac{\pi_2}{1 - \pi_2} = \frac{\pi_0}{1 - \pi_0} \exp(\beta_{nap})$. So as the coefficient of this feature is  0.07, we can conclude that the addition of one administration page is associated with a 7% increase in the odds of purchasing something (as $\exp(0.07) = 1.07$) holding all other predictors constant. 
-
---- 
-
-But for some variables like `page_values` we did a log transformation, and we have to take it into account in our interpretation : 
-
-$$z_n = X_n \beta = \beta_1 + X_{n,nap} \beta_{nap} + \log(X_{n,pv} +1) \beta_{pv} +  ... $$
-And so a one unit increase in $\log(X_{n,pv} +1)$ corresponds to a multiplication of the odds by 6.05 (as the coefficient of the page values is 1.8 and $\exp(1.8) = 6.05$). 
-
-**Categorical Variables**
-
-For categorical variables, let's take for example the feature `traffic_type` : 
-
-$$z_n = X_n \beta = \beta_1 + I_{(X_{n,tt}==2)} \beta_{tt2} + ... + I_{(X_{n,tt}==6)} \beta_{tt6}  +... $$
-In this example, the reference categorical is the "traffic type 1". And each coefficient represents the difference in log - odds of purchasing something compare to the odds's reference. We indeed have for instance : $X_1 = (tt1, x_{pv}... )$ and $X_2 = (tt2, x_{pv}... )$. We obtain :
-
-- $\pi_1 =  P(Y=1 | X = X_1) $ leads to $\beta^T X_1  = \log(\frac{\pi_1}{1 - \pi_1})$
-
-- $\pi_2 =  P(Y=1 | X = X_2) $ leads to $\beta^T X_2 = \log(\frac{\pi_2}{1 - \pi_2})$
-
-And then by subtracting : $$\beta_{tt2} = \log(\frac{\pi_2}{1 - \pi_2}) - \log(\frac{\pi_1}{1 - \pi_1})$$
-
-## Discussion
-
-In conclusion, we can mention the fact that our final model makes sense, indeed knowing that we have explained how to interpret the coefficients, we can look at the summary with a new eye. We actually find back what we have noticed in the exploration part, i.e the more the average value of pages visited is high the more the probability of purchasing something is high. 
-
-Moreover, in the same idea the more time the customer spends looking at product pages, the more likely they are to buy. Or the more time he wastes on administrative pages, the less likely he is to purchase something. 
-
-What is more surprising are the three coefficients of the model's interactions with the pages. Indeed, since they represent the sum of the values of the observed pages in each category (and on average), one would expect the coefficients to be positive. But we can assume that this interaction is intended to attenuate the large effect of the page values variable.   
-
-Concerning the data, we can notice that the month of reference is August (the first one in alphabetical order knowing that January and April are not represented). Thus we can see that the months that have a higher positive impact on sales compared to this month are July, September and November. And these would also be the months where people on average consult pages of lower value. 
-
+Concerning the date, we can notice that the month of reference is August (the first one in alphabetical order knowing that January and April are not represented). Thus we can see that the months that have a higher positive impact on sales compared to this month are July, September and November. Which is interesting to link to the fact that November is the month before Christmas, where people buy present and July, August and September are the "summer" months where people are more likely to purchase in general. 
 Furthermore, it is not surprising to learn that the coefficient of special day is positive, so customers are more likely to buy when a holiday arrives. 
 
-Nevertheless, we have to say that we have in fact explored very few interactions among all the possible ones. With more time it would surely have been possible to find a more accurate model (even if all models are wrong).  
+# Other possible model
+
+We have to admit that we have in fact explored very few interactions among all the possible ones. With more time it would surely have been possible to find a more accurate model (even if all models are wrong). 
+
+Upon further consideration, it would be beneficial to include additional variables in the data set. Specifically, we should consider adding an indicator that reflects whether the customer viewed pages with value or not. Since most of them did not do so, although this parameter is very important in the purchase. So, due to the limited number of observations, the coefficient's results may be biased. By introducing this indicator, we can reduce the impact of this phenomenon. 
+
+By the same reasoning, we can also put an indicator to inform if the customer has consulted pages with some values or not.
+
+---
+
+After constructed the model, and after checking the diagnostics plots, we obtain the results show in the table 3 below. We therefore observe that both the AIC value and the Residual Deviance are lower, and the AUC is higher. Which is very encouraging to think that we found a better model.
 
 
+```{r}
+modell <- glm(purchase~. -browser -region - time_info_page - weekend - operating_sys + I(time_product_page^2) + (page_values + I(page_values ==0)) * (n_product_page + n_admin_page  + month + I(n_admin_page)) + page_values*(I(n_info_page==0)) + (special_day + n_info_page), data=Data_final, family="binomial") 
 
+#AUC_eval(modell, Data_final)
+
+#modell <- glm(purchase~. -browser -region - time_info_page - weekend - operating_sys -special_day + I(time_product_page^2) + (page_values + I(page_values ==0)) * (n_product_page + n_admin_page  + month + I(n_admin_page)) + page_values*(I(n_info_page==0)) + (I(special_day==1) + n_info_page), data=Data_final, family="binomial") 
+
+#AUC_eval(modell, Data_final)
+```
+
+
+```{r}
+library(knitr)
+library(kableExtra)
+tab <- matrix(c(AIC(modell), modell$deviance, AUC_eval(modell, Data_final)),nrow = 1)
+colnames(tab) <- c("AIC","Residual Deviance","AUC value")
+kable(tab, align="c", caption = "Table 4: AIC, Residual Deviance and AUC value of our final model.", table.attr = "style='width:50%;'", booktabs=T) %>% kable_styling(position = "center")
+  
+```
 
 
 
