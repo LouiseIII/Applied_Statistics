@@ -34,7 +34,7 @@ library(viridis)
 
 Football is one of the most popular sports worldwide. Like many other sports, it has been greatly affected by COVID-19. The pandemic has caused big changes in how football matches are played. Many matches have been cancelled or played without fans in the stadiums. Some matches have had limited numbers of spectators allowed. This situation has raised questions about how the absence of fans affects team performance and, in particular, home advantage. Home advantage, which means that teams tend to do better when playing on their own field, has always been considered an important factor in sports. However, during the pandemic the absence of fans has questioned whether the home advantage is actually as beneficial. There has been a growing interest among researchers and fans in studying the impact of COVID-19 on home advantage in football. 
 
-For that purpose, we have a complete data set, which we will start by describing and exploring. Before building a model which would study the number of goals scored in each game. We will then interpret it to answer the given problem. Moreover, we will finish by critically examining the created model by studying the 'diagnostic' plots and making sensitivity analysis.  
+For that purpose, we have a complete data set at our disposal, with information on different games. In order to analyze the home effect during covid, we will proceed in six parts. In the first part, we will perform data treatments, including a phase of description and exploration. Then, we will build a model to study the number of goals scored in each game and take time to interpret the results. Furthermore, we will finish by critically examining the created model by studying the diagnostic plots and conducting sensitivity analysis.
 
 ```{r, load the data & add the current "covid period"}
 path_to_data <- "Project-3/Premier_League/"
@@ -88,18 +88,20 @@ names(Data)[1:2] <- c("Team", "Adverse")
 names(Data)[3] <- c("Goal")
 ```
 
-# Description of the Data Set 
+# Data Treatments
 
-In order to determine if home effect has been affected by the COVID, we will construct a model to determine the results of a match. Hence, we only keep the following variables of the data set: `HomeTeam`, `AwayTeam`, `Referee`, `Goal_Home`, `Goal_away`, and `Covid` (an indicator that we add to determine if we are in the period of Covid, where no spectators allowed, before or after). An overview of the data set is shown in Figure 1. 
+## Description of the Data Set 
+
+In order to determine if the home effect has been affected by the COVID, we will construct a model to determine the results of a match. Therefore, we only keep the following variables of the data set: `HomeTeam`, `AwayTeam`, `Referee`, `Goal_Home`, `Goal_away`, and `Covid` (an indicator that we add to determine if we are in the period of Covid, where no spectators are allowed, before or after). An overview of the data set is shown in Figure 1. 
 
 ```{r, fig.align="center"}
-tab <- matrix(c(season_1819[1,-7], season_1819[2,-7], season_1819[3,-7], rep("...", 6)), nrow=4, ncol=6, byrow=TRUE) 
+tab <- matrix(c(X2019_20[1,-7], X2019_20[2,-7], X2019_20[3,-7], rep("...", 6)), nrow=4, ncol=6, byrow=TRUE) 
 colnames(tab) <- c("HomeTeam", "AwayTeam", "Home_Goal", "Away_Goal", "Referee", "Covid")
 kable(tab, align="c", caption="Figure 1 : Overview of our Data Set after variables selection.", table.attr = "style='width:50%;'", booktabs=T) %>% kable_styling(position = "center")
 ```
 
-In this data set, we observe that an observation corresponds to a match, i.e., one line groups the information on a match and gives the number of goals scored by a team, then the other (in two separate columns). However, as mentioned above, our goal is to model the number of goals, so to get around this problem, we can assume that the scores from one team to another in a match are independent and thus duplicate each match. After this modification, we obtain the following data set : 
-
+In this data set, we observe that each observation corresponds to a match, where one line groups the information about a match and gives the number of goals scored by a team, and then the opposing team (in two separate columns). However, as mentioned above, our objective is to model the number of goals, so to get around this issue, we can assume that the scores from one team to another in a match are independent and thus duplicate each match. After this modification, we obtain the following data set : 
+ 
 ```{r, fig.align="center"}
 tab <- matrix(c(Data[1,-6], Data[1401,-6], Data[2,-6], rep("...", 6)), nrow=4, ncol=6, byrow=TRUE) 
 colnames(tab) <- c("Team", "Adverse", "Goal", "Referee", "Covid", "Home")
@@ -108,20 +110,20 @@ kable(tab, align="c", caption = "Figure 2 : Overview of our Data Set after dupli
 
 In the end, the data set contains six variables : 
 
-- `Team` which we observe in a particular match 
-- `Goal` which is the variable of interest and determines the number of goals scored during the game by this Team 
-- `Adverse`, the adverse Team 
-- `home` is an indicator which informs if the Team plays at home or not
-- `Covid` which indicates if the match took place before, during, or after the Covid
-- `Referee` of the match. 
+- `Team`, the team observed in a particular match 
+- `Goal`, the variable of interest that determines the number of goals scored during the game by this team 
+- `Adverse`, the opposing team in the game 
+- `home`, an indicator that informs if the team plays at home or not
+- `Covid`, an indicator indicating if the match took place before, during, or after the covid pandemic
+- `Referee`, the referee of the match. 
 
-# Exploration Part  
+## Exploration Part  
 
-Now that we have described the data set, we can begin the exploration part, which naturally start with the variable of interest: `Goal`. 
+Now that we have described the data set, we can begin the exploration part, which naturally starts with the variable of interest: `Goal`. 
 
-It is a variable that takes values in 0, 1, 2, ...., so entire and positive values. Therefore it can be characterized as a count variable. This precious information will guide us in the next step through a Poisson regression method, very popular and useful in these problems. Moreover the minimum value is 0 and the maximum is `r max(Data$Goal)`.  
+It is a variable that takes values in 0, 1, 2, ...., so entire positive values. Therefore it can be characterized as a count variable. This precious information will guide us in the next step through a Poisson regression method, which is very popular and useful in these problems. Moreover the minimum value is 0 and the maximum value is `r max(Data$Goal)`.  
 
-One good way to confirm the intuition that the poisson model can be good one is to compare our variable `Goal` with a sample from a poisson distribution with mean `r mean(Data$Goal)` (the mean of our observations). This is shown in Figure 3, and we notice that both histograms are quite similar, which is quite encouraging.   
+One good way to confirm the intuition that the poisson model can be good one is to compare our variable `Goal` with a sample from a Poisson distribution with mean `r round(mean(Data$Goal), 2)` (the mean of our observations). This is shown in Figure 3, and we notice that both histograms are highly similar, which is quite encouraging.   
 
 ```{r, eval=FALSE}
 ggplot(Data)+
@@ -152,7 +154,7 @@ ggplot(Data)+
 
 ---
 
-Keeping sight of our objectives, we are curious to found out if the data shows any obvious signs of impact during covid. The idea is to represent for each number of goals and each period of the covid, the proportion of goals scored at home (Figure 4). For instance, during the 'pre-covid' period, of all the teams that scored 5 goals, 70% were playing at home. 
+Keeping sight of our objectives, we are curious to find out if the data shows any obvious signs of impact during covid. The idea is to represent for each number of goals and each period of the covid, the proportion of goals scored at home (Figure 4). For instance, during the 'pre-covid' period, of all the teams that scored 5 goals, 70% were playing at home. 
 
 ```{r, fig.align="center", fig.cap="Figure 4: Proportion of goals scored at home for each covid's periods."}
 Data2 <- Data[Data$covid=="Before",]
@@ -189,17 +191,17 @@ ggplot()+
 
 This graph is particularly interesting since it emphasizes several aspects.
 
-The first, it clearly highlights the home effect. Indeed, for most of the goals (more than zero) the proportion of team playing at home is more important (higher than 0.5). Moreover, each of the three curves is increasing: either the higher the score the higher the probability that this team plays at home. 
+The first, it clearly highlights the home effect. Indeed, for most of the goals (more than zero) the proportion of team playing at home is more important (higher than 0.5). Moreover, each of the three curves is increasing: either the higher the score the higher the probability that the team plays at home. 
 However, it is important to note that the higher the score, the fewer data we have. This could explain these huge proportions at the end. Indeed, only `r sum(Data$Goal>4)` of the observations, we have a score higher or equal to 5, representing `r round(sum(Data$Goal>4)/length(Data$Goal) *100, 2)`% of our data set.
 
-Another point to note is that the two curves corresponding to before and after covid, are roughly similar (except for the value 5). Contrary to the curve during covid which is lower than the other two and is even more or less constant (around 0.5). 
-This graph leads us to think that the home effect was penalized during the covid period, whereas without the audience it would have disappeared. 
+Another point to note is that the two curves corresponding to before and after covid, are roughly similar (except for the value 5). Contrary to the curve during covid which is lower than the other two and remains relatively constant (around 0.5). 
+This graph leads us to think that the home effect was diminished during the covid period, whereas without the audience it would have disappeared. 
 
 # Regression 
 
 ## Poisson family 
 
-As explained in the previous part, the variable of interest (`Goal`) is a 'count variable', it counts the number of goals in a match by a certain team. As it takes values in $\mathbb{N}$, the poisson model seems to be the most suitable for representing it. 
+As explained in the previous part, the variable of interest (`Goal`) is a 'count variable', it counts the number of goals in a match by a certain team. As it takes values in $\mathbb{N}$, the Poisson model seems to be the most suitable for representing it. 
 
 Moreover we can note that the poisson distribution is of the exponential type. 
 Indeed, the density can be written :
@@ -215,13 +217,13 @@ From here we can see that $\mu = \mathbb{E}[Y] = \lambda = \exp(\theta)$ and we 
 
 In statistics, when applying regression analysis, it is necessary to make certain assumptions regarding the regression and the specific type of regression being used.
 
-The first one is that all the observations must be independent. That why before to duplicate each match we make the hypothesis that the score of a team and the adverse in the same match must not be dependent.  
+The first one is that all the observations must be independent. That is why before to duplicate each match we make the hypothesis that the score of a team and the adverse in the same match must not be dependent.  
 
-The second one is related to the poisson regression method, the mean and the variance of the variable of interest must be equal. This is indeed a characteristic of the Poisson distribution. Nevertheless, this can be a very constraining restriction and leads to problems such as overdispersion. 
+The second one is related to the Poisson regression method, the mean and the variance of the variable of interest are assumed to be equal. This is indeed a characteristic of the Poisson distribution. Nevertheless, this can be a very constraining restriction and can lead to problems such as overdispersion. 
 
 ---
 
-That being said, we start by performing a regression analysis on all variables that we have. This analysis will help us determine which variables serve as significant predictors of the goal, and which ones do not. By identifying the non-significant variables, we can potentially simplify our model by removing them.
+That being said, we start by performing a regression analysis on all the variables that we have. This analysis will help us determine which variables serve as significant predictors of the number of goal, and which ones do not. By identifying the non-significant variables, we can potentially simplify our model by removing them.
 
 ```{r, eval=TRUE}
 Data$home <- as.factor(Data$home)
@@ -231,9 +233,9 @@ model_full <- glm(Goal~.-ind, Data, family=poisson(link=log))
 model_ref <- glm(Goal~.-ind - Referee, Data, family=poisson(link=log))
 ```
 
-By studying the summary, the variable `Referee` and `covid` do not seem significant. So we can remove the variable `Referee`. By this action, we can see that the AIC goes from `r round(AIC(model_full), 2)` to `r round(AIC(model_ref), 2)`. In addition of that, it is easy to convince yourself that the referees do not have much influence on the score. 
+By studying the summary, the variable `Referee` and `covid` do not seem significant. So we can remove the variable `Referee`. By this action, we can see that the AIC goes from `r round(AIC(model_full), 2)` to `r round(AIC(model_ref), 2)`. In addition to that, it is easy to convince yourself that the referees do not have much influence on the score. 
 
-However, our previous exploration showed that the covid might eventually have an effect. We can therefore put an interaction between the variables `home` and `covid`. And it turns out to be a meaningful interaction. In the same way, adding an interaction between `adverse` and `covid` improve the result.   
+However, our previous exploration showed that the covid might eventually have an effect. We can therefore put an interaction between the variables `home` and `covid`. And it turns out to be a meaningful interaction. In the same way, adding an interaction between `adverse` and `covid` improves the result.   
 
 ```{r, eval=TRUE}
 model_inte <- glm(Goal~ home*(covid + Team + Adverse) + covid*(Team + Adverse), family=poisson(link=log), data=Data)
@@ -260,14 +262,14 @@ summary(model_final)
 
 Now that we have constructed an appropriate model, we can take a closer look and analyze the summary.
 
-In a poisson regression the coefficient $\beta$ associated with a variable measures its effect on the outcome. Specifically, a one-unit change in X (or going to one another level) multiplies the rate of the outcome by $\exp(\beta)$. Let's analyze this in more depth by separate each case : the intercept and the categorical variables. 
+In a poisson regression the coefficient $\beta$ associated with a variable measures its effect on the outcome. Specifically, a one-unit change in X (or going to one another level) multiplies the rate of the outcome by $\exp(\beta)$. Let's analyze this in more depth by separating each case : the intercept and the categorical variables. 
 
 
 **The intercept**
 
 The intercept captures the expected frequency (count) when all the regressors are set to zero. In practice, the intercept in a poisson regression is not very interesting or informative, and may not always have a meaningful interpretation. It acts like a reference point to compare when the variables take different values. 
 
-The mathematical sens can be understand by writting : 
+The mathematical sens can be understand by writing : 
 
 $$\theta_n = X_n \beta = \beta_1 + X_{n, 2} \beta_2 + ... + X_{n, 2} \beta_2$$
 
@@ -438,7 +440,7 @@ We can clearly see that the observe deviance is not a rare event, on the 1000 re
 
 ---
 
-Among our hypotheses, we find one that in the same game, the score of each team is independent. This assumption is not intuitive and therefore deserves to be verified. For this, we can plot a team's residuals against the other team's residuals in the same match. The result, shown below, is quite convincing. Indeed, no dependence structure is apparent, and the result looks like a normal law of dimension 2. This leads us to assert that the hypothesis is well-verified. 
+Among our hypotheses, we find one that in the same game, the score of each team is independent. This assumption is not intuitive and therefore deserves to be verified. For this, we can plot a team's residuals against the other team's residuals in the same match. The result, shown below, is quite convincing. Indeed, no dependence structure is apparent, and the result looks like a normal law of dimension 2. This leads us to affirm that the hypothesis is well-verified. 
 
 ```{r, fig.align="center", fig.cap="Figure 10: Residuals Comparison, Team vs. Adverse."}
 res <- data.frame(res1 = residuals(model_final, type = "pearson")[1:1400],
@@ -453,16 +455,16 @@ ggplot()+
 
 # Discussion
 
-Following this study, we can affirm that the effect of home advantage is real and not negligible in the score prediction. 
-However, like many things, it was impacted during the covid. Indeed, the absence of public reduced the home effect. Which has however come back since the end of the pandemic. 
+In conclusion, we have built a model that represents our observations well. The diagnostics are reasonable, and the hypotheses we have made are verified. 
 
-Other points of the analysis can also be mentioned as the regression highlights some teams that are better than others in defense or in attack. For example, Man City is the one with the higher coefficient for the variable `Team`, which indicates that they seem very strong in attack. On the other side, Liverpool has the lower coefficient for the `Adverse` variable. So when a Team plays against them, the number of expected scores decreases, which leads us to believe that they are good at defense. 
+Following this study, we can affirm that the effect of home advantage is real and not negligible in the score prediction. We indeed notice it since the exploration part and the construction of the model confirm it. However we also highlight that it was impacted during the covid. The absence of public reduced the home effect.  
+
+Other points of the analysis can also be mentioned such that some teams are better than others in defense or in attack. For example, Man City is the one with the higher coefficient for the variable `Team`, which indicates that they seem very strong in attack. On the other side, Liverpool has the lower coefficient for the `Adverse` variable. So when a Team plays against them, the number of expected scores decreases, which leads us to believe that they are good at defense. 
 
 
 # Larger and Smaller Data set  
 
-
-The first purpose of our report was to highlight changes in the home effect during the 3 different covid periods. However, we can see that the teams from one season to another are not the same. Consequently, we have some data with the teams present in only one period, and others in 2 or 3. This is not ideal when we want to make analyse on comparisons, and can indeed increase the uncertainties of the model. We can therefore think about two solutions. 
+The first purpose of our report was to highlight changes in the home effect during the three different covid periods. However, we can see that the teams from one season to another are not the same. Consequently, we have some data with the teams present in only one period, and others in two or three. This is not ideal when we want to make an analyse on comparisons, and can indeed increase the uncertainty of the model. We can therefore think about two solutions. 
 
 --- 
 ```{r}
@@ -523,21 +525,21 @@ Data_test <- rbind(Data_test, data.frame(Team=x, Adverse=Adverse_new, covid=covi
 
 ```
 
-One solution could be to compensate for the lack of information on certain teams by simulating the missing data with our model. It is important to note that the data coming from the simulation and not from the "real" model will be biased.
+One solution could be to compensate for the lack of information on certain teams by simulating the missing data with our model. It is important to note that the data coming from the simulation, and not from the "real" model will be biased.
 
 ```{r, eval=TRUE}
-model_test <- glm(Goal~Team+Adverse + covid*home, family=poisson, Data_test)
+model_test <- glm(Goal~Team+Adverse + covid*(home+Adverse), family=poisson, Data_test)
 #summary(model_test)
 anova(model_test, test="LR")
 ```
 
-Proceeding in the same way as in the Regression Application part, we find without the same significant variables. And by studying the summary, we can make the same interpretations. The remark we can make is that the standard error of each coefficient is smaller and thus reduces the uncertainty of the model. The variable `home`*`covid` is even more significant.   
+By following the same approach as in the regression application part, we obtain similar results with respect to the significant variables. Upon analyzing the summary, we observe that the standard error of each coefficient is smaller, indicating a reduction in the uncertainty of the model. Notably, the variable `home`*`covid` exhibits even greater significance. However, it is important to note that this approach deviates from the conventional practice.
 
 ---
 
-Another possibility could be to analyze only the observations, which have play before, during and after the covid pandemic. The advantage is that none of our observations would be biased. This results in a data set with about 600 fewer observations, which represents a loss of about 21,5 % of the data. 
+Another possibility could be to analyze only the teams, which have play before, during and after the covid pandemic. The advantage is that none of our observations would be biased. This results in a data set with about 600 fewer observations, which represents a loss of about 21,5 % of the data. 
 
-Before doing the regression we can explore this new data set and make the same plot as in the first part. We therefore observe that the home advantage is not as evident as it was in the first graph. Therefore we could expected different results for the regression. 
+Before doing the regression we can explore this new data set and make the same plot as in the first part. We therefore observe that the impact of covid on the home advantage is not as evident as it was in the first graph. The three curves are indeed more blended, even if looking at the big scores, it seems that the covid still has an impact. Therefore, we could expect different results for the regression. 
 
 ```{r, fig.align="center", fig.cap="Figure 11: Proportion of goals scored at home for each covid's periods with the new data set."}
 list <- liste[(liste %in% liste1) & (liste %in% liste2) & (liste %in% liste3)]
@@ -577,7 +579,7 @@ ggplot()+
 ```{r, eval=TRUE}
 # Test with only the variable that we have data in the three periods
 
-model_test2 <- glm(Goal~Team+Adverse + covid*home, family=poisson, Data_test2)
+model_test2 <- glm(Goal~Team+Adverse + covid*(home+Adverse), family=poisson, Data_test2)
 model_test3 <- glm(Goal~Team+Adverse + home, family=poisson, Data_test2)
 #summary(model_test2)
 anova(model_test2, test="LR")
