@@ -428,18 +428,12 @@ pacf(fit$residuals, lag.max=25, main="")
 
 Moreover, we remark that it has an AIC lower than our model find in the quadratic case. It then emphasizes the idea that it is a better model. 
 
-```{r, fig.align="center", fig.cap="Figure 13: Prediction of the temperature until 2050 with the model established."}
-fit <- Arima(x, order=c(3, 1, 3), seasonal=list(order=c(2, 1, 1), period=12))
-preds <- forecast(fit, 12*28, c(0.5,0.95)) # 2-year ahead forecast 
-autoplot(x) + autolayer(preds)+ ylab("Temperature")+theme_minimal()
-```
-
 ---
 
 Therefore we can compare the predictions that we obtain with both models. We then represent the prediction until 2050 in Figure 10 with this new model. 
 
-```{r, fig.align="center", fig.cap="Figure 14: Prediction of the temperature until 2050 with the model found with a linear trend.", eval=FALSE}
-fit <- Arima(x, order=c(1, 1, 2), seasonal=list(order=c(2, 0, 1), period=12))
+```{r, fig.align="center", fig.cap="Figure 13: Prediction of the temperature until 2050 with the model established."}
+fit <- Arima(x, order=c(3, 1, 3), seasonal=list(order=c(2, 1, 1), period=12))
 preds <- forecast(fit, 12*28, c(0.5,0.95)) # 2-year ahead forecast 
 autoplot(x) + autolayer(preds)+ ylab("Temperature")+theme_minimal()
 ```
