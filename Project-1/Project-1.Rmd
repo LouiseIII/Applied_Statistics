@@ -298,11 +298,22 @@ opt <- matrix(0, nrow=B, ncol=5)
 t <- rep(0, B)
 
 for (b in 1:B){
+  
+  #print(b)
   # 1) Génération du sample & data
-  samp <- sample(x=1:52, size=data$number[1], prob=data$value, replace=TRUE)
+  #samp <- sample(x=1:52, size=data$number[1], prob=data$value, replace=TRUE)
+  
+  samp <- rbernoulli(data$number[1], opti[5])
+  #samp <- (1-samp)*rnorm(n=data$number[1], opti[1], opti[3]) + samp*rnorm(n=data$number[1], opti[2], opti[4])
+  samp <- (1 - samp)*rlnorm(data$number[1], opti[1], opti[3]) + samp*rlnorm(data$number[1], opti[2], opti[4])
+  
   vec = rep(0, 52)
+  #for (i in 1:52){
+    #vec[i] <- sum(samp==i)
+  #}
+  
   for (i in 1:52){
-    vec[i] <- sum(samp==i)
+    vec[i] <- sum(samp<data$end[i] & samp>data$start[i])
   }
     
   vect = vec / data$number[1]* 100
