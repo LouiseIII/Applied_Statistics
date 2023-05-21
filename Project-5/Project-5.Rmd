@@ -36,8 +36,8 @@ library(nlme)
 ```
 
 
-Climate change has been at the heart of all concerns, especially among the new generations. It raises concerns among many people. Rightfully, since it has already had disastrous consequences for the animal and plant world. It already threatens in the short term many species, i.e., the polar bear, which feeds more and more difficult due to the degradation of the arctic ice pack. In addition to that, it is the source of many meteorological disasters; the 0NU estimates that the number of disasters has been multiplied by 5 in only 50 years. 
-It is sad that human activity is the primary cause of climate change. Factors such as aviation industry, or plastics overproduction have contributed significantly to the emission of greenhouse gases. Greenhouse gases trap heat in the atmosphere, leading to rising temperatures. The consequences of global warming raises questions. No matter the cause, it is necessary to take action right away in order to solve this problem and make the harmful effects on the Earth and its living creatures less severe.
+Climate change has been at the heart of all concerns, especially among the new generations. Rightfully, since it has already had disastrous consequences for the animal and plant world, it threatens in the short-term many species, i.e., the polar bear, which feeds more and more difficult due to the degradation of the arctic ice pack. In addition to that, it is the source of many meteorological disasters; the 0NU estimates that the number of disasters has been multiplied by 5 in only 50 years. 
+It is sad that human activity is the primary cause of climate change. Factors such as the aviation industry or plastic overproduction have contributed significantly to the emission of greenhouse gases. Greenhouse gases trap heat in the atmosphere, leading to rising temperatures. The consequences of global warming raise questions. 
 
 In this report, we will carefully analyze the temperature data set provided to gain a better understanding of its behavior and make predictions for the future. To do this, we will first explore the available data before building a model, beginning by the trend. We will take the time to interpret and verify it using various diagnostic techniques. Finally, we will discuss the results and provide a critical perspective.
 
@@ -46,7 +46,7 @@ In this report, we will carefully analyze the temperature data set provided to g
 This report will focus on the temperature data set spanning from 1880 to 2022, which is visually represented in Figure 1 below. It is then evident that the temperature tends to increase gradually over time. Moreover, a closer inspection of the data reveals that it can be divided into two distinct periods: the first period, lasting until 1960, in which temperatures remain relatively constant with minor fluctuations, and the second period, beginning in 1960. Within the context of this analysis, we will only focus on the second one.  
 
 ```{r, load data, fig.align="center", fig.cap="Figure 1: Illustration of the time series 'temperature.'"}
-setwd("~/Google Drive/EPFL/Applied Stat/StatApp-314577/Project-5")
+
 data <- read.csv("temperature.csv", sep=",", dec=".", head=TRUE)
 
 x <- as.vector(t(data[, -c(1, 14:19)]))
@@ -72,7 +72,7 @@ Furthermore, as previously mentioned, it is evident that the data exhibits an in
 
 - $T_t$ is the trend component 
 
-- $Y_t$ is the stationary remainder with mean zero 
+- $Y_t$ is the stationary remainder with zero mean.  
 
 In this initial section, our objective will be to find an appropriate trend for the model. And therefore to understand the overall behavior of the temperature. Without this step, the time series has no chance to be stationary, as the mean is not constant. The stationarity is indeed an essential property which allows us to do statistics on a single observation. 
 
@@ -80,7 +80,7 @@ In this initial section, our objective will be to find an appropriate trend for 
 
 To fit the trend, we will explore three possible forms: linear, quadratic, and exponential. The idea is to initially fit a model using all the forms and after to determine if some can be omitted.
 
-Then we first begin to fit usinng the formula below, nad we show the result of the regression in Figure 2. 
+Then we first begin to fit using the formula below, and we show the result of the regression in Figure 2. 
 
 `temp` ~ `t` + `t^2` + `exp(t/1000)` + `month`
 
@@ -127,7 +127,7 @@ This function computes the correlation matrix of the residuals, specifying the A
 
 ## ARMA and Residuals 
 
-We first start by plotting the "residuals" process obtained after the regression. It then appears to be more stationary as shown in the Figure 3. There is no more apparent trend or seasonality and the series seems to have zero mean which is very encouraging. However, it is very difficult to prove the stationary of a series and therefore, we can only make the hypothesis. 
+We first start by plotting the "residuals" process obtained after the regression. It then appears to be stationary as shown in the Figure 3. There is no more apparent trend or seasonality and the series seems to have zero mean which is very encouraging. However, it is very difficult to prove the stationary of a series and therefore, we can only make the hypothesis. 
 
 ```{r, fig.align="center", fig.cap="Figure 3: Residuals of the previous regression."}
 res <- lmfit$residuals
@@ -151,7 +151,7 @@ acf(res, lag.max=25)
 pacf(res, lag.max=25)
 ```
 
-We observe that the PACF exhibits two significant spikes at lag 1 and 2. This indicates a dependence between $R_t$ (the residual at time t) and $R_{t-2}$ which is not provided by the intervention of $R_{t-1}$. Moreover, the ACF shows an exponential decay, which are characteristic traits of an auto regressive process. Therefore, this suggests fitting an AR(2) model.
+We observe that the PACF exhibits two significant spikes at lag 1 and 2. This indicates a dependence between $R_t$ (the residual at time t) and $R_{t-2}$ which is not provided by the intervention of $R_{t-1}$. Moreover, the ACF shows an exponential decay. Both are characteristic traits of an auto regressive process. Therefore, this suggests fitting an AR(2) model.
 
 *Note : The analysis of the residuals for this fitting model was performed in the code but is not reported in the report.*
 
@@ -160,6 +160,8 @@ fit <- arima(res, order=c(2, 0, 0))
 acf(fit$residuals)
 pacf(fit$residuals)
 # Not too bad : Except for a few spikes that slightly exceed the blue lines, it resembles white noise.
+qqnorm(fit$residuals)
+# It is a straigth line
 ```
 
 ## Applications 
@@ -168,10 +170,10 @@ Now that we have the dependence structure of our residuals, in this section we w
 
 ### Exponential Term  
 
-Upon examining the summary output, several observations can be made. The most significant of these is undoubtedly that the coefficient associated with the exponential term is negative. This observation is critical because while the exponential term may not have a substantial impact at small values, it exerts the greatest influence at larger values, which will have a negative impact on the model in the future, as demonstrated in Figure 5. 
+Upon examining the summary output, several observations can be made. The most significant of these is undoubtedly that the coefficient associated with the exponential term is negative. This observation is crucial because even if the exponential term may not have a substantial impact at small values, it exerts the greatest influence at larger values, which will have a negative impact on the model in the future, as demonstrated in Figure 5. 
 
 
-```{r, fig.align="center", fig.cap="Figure 5: Trend fitted with linear, quadratic and exponentiel term."}
+```{r, fig.align="center", fig.cap="Figure 5: Trend fitted with linear, quadratic and exponential term."}
 R_struct <- corARMA(form=~t, p=2) 
 glsfit <- gls(y~t+ I(t^2)  + I(exp(t*0.001))+month, data=lmData, corr=R_struct, method="ML")
 
@@ -189,7 +191,13 @@ Furthermore, the exclusion of the exponential term is supported by a p-value of 
 #R_struct <- corARMA(form=~t, p=2) 
 #glsfit <- gls(y~t+I(t^2) +I(exp(t*0.001))+ month, data=lmData, corr=R_struct, method="ML")
 subfit_1 <- gls(y~t+I(t^2) + month, data=lmData, corr=R_struct, method="ML")
-anova(subfit_1, glsfit)
+anv<- anova(subfit_1, glsfit)
+
+library(knitr)
+library(kableExtra)
+tab <- matrix(c("subfit_1", "glsfit", 1, 2, anv$df[1], anv$df[2], round(anv$logLik[1], 2), round(anv$logLik[2], 2), "", round(anv$L.Ratio[2]), "", round(anv$`p-value`[2], 2)),nrow = 2, ncol=6, byrow=FALSE)
+colnames(tab) <- c("","Model","Df", "logLik", "L.Ration", "p-value")
+kable(tab, align="c", caption = "Table 1: ANOVA table to compare the full model and the one without the exponential component.", table.attr = "style='width:50%;'", booktabs=T) %>% kable_styling(position = "center")
 ```
 
 Therefore, we conclude that the model fitted is not explained by the exponential term and it may be reasonable to exclude this term from the model.
@@ -203,25 +211,32 @@ points(fitted(subfit_1),type="l", col="blue", lty=2)
 
 ### Quadratic Term 
 
-The next step is to analyze the possibly quadratic trend. For that we will fit the model: `y~t+ I(t^2) +month` and by analyzing we found that there are both very significant as can prove the following anova tables for respectively the model with $t$ and $t^2$: 
-
+The next step is to analyze the possibly quadratic trend. For that, as in the previous part, we fit the model without the quadratic term : `y~t+ I(t^2) +month` and compare it to the one that includes it. It is evident that the quadratic term is significant, as evidenced by the following ANOVA table.
 
 ```{r}
 subfit_2 <- gls(y~t+month, data=lmData, corr=R_struct, method="ML")
-anova(subfit_2, subfit_1)
+anv <- anova(subfit_2, subfit_1)
+
+tab <- matrix(c("subfit_2", "subfit_1", 1, 2, anv$df[1], anv$df[2], round(anv$logLik[1], 2), round(anv$logLik[2], 2), "", round(anv$L.Ratio[2]), "", round(anv$`p-value`[2], 5)),nrow = 2, ncol=6, byrow=FALSE)
+colnames(tab) <- c("","Model","Df", "logLik", "L.Ration", "p-value")
+kable(tab, align="c", caption = "Table 2: ANOVA table to compare the model without the exponential component and the one without the quadratic term.", table.attr = "style='width:50%;'", booktabs=T) %>% kable_styling(position = "center")
 ```
 
-Therefore we can not deny a possibly quadratic term in the trend. It will be then interesting to construct a model with a polynomial of degree 2 as trend and to compare it with the one obtained before.
+Therefore we can not deny a possibly quadratic term in the trend.
 
-Note : A similar reasoning can be made for the linear term `t` where we found a p-value of 0.0053. 
+*Note : A similar reasoning can be made for the linear term `t` where we found a p-value of 0.0053.* 
 
 ### Seasonality 
 
-The following question we will address is whether seasonality needs to be incorporated into the trend. To investigate this, we will examine the "month" variable in the regression. The following anova table, which compares the model with and without it, shows that it actually has an impact on the model, and remove it will change the result.  
+The following question we will address is whether seasonality needs to be incorporated into the trend. To investigate this, we will examine the "month" variable in the regression. The following ANOVA table, which compares the model with and without it, shows that it actually has an impact on the model, and remove it will change the results.  
 
 ```{r}
 subfit_2 <- gls(y~t+I(t^2), data=lmData, corr=R_struct, method="ML")
-anova(subfit_2, subfit_1)
+anv <- anova(subfit_2, subfit_1)
+
+tab <- matrix(c("subfit_2", "subfit_1", 1, 2, anv$df[1], anv$df[2], round(anv$logLik[1], 2), round(anv$logLik[2], 2), "", round(anv$L.Ratio[2]), "", round(anv$`p-value`[2], 5)),nrow = 2, ncol=6, byrow=FALSE)
+colnames(tab) <- c("","Model","Df", "logLik", "L.Ration", "p-value")
+kable(tab, align="c", caption = "Table 3: ANOVA table to compare the model without the exponential component and the one without the seasonal term.", table.attr = "style='width:50%;'", booktabs=T) %>% kable_styling(position = "center")
 ```
 
 ```{r, eval=FALSE}
@@ -301,20 +316,20 @@ As enumerate before, we aim to fit a SARIMA model, we just determine that d=2 an
 
 However, it is important to note at this point of the analysis that the estimated values of the ACF and PACF obtained using the method of moments are biased. This means that as we observe larger lags, we have fewer values available for estimation, resulting in decreased precision. Therefore, we have chosen to focus our analysis on lags smaller than $10 \log_{10}(n)$, which is 28 in our specific case.
 
-```{r, fig.align="center", fig.cap="Figure 4: ACF and PACF of the process."}
+```{r, fig.align="center", fig.cap="Figure 7: ACF and PACF of the process."}
 par(mfrow = c(1, 2))
 acf(x_diff, lag.max=28)
 pacf(x_diff, lag.max=28)
 ```
 
 We now need to determine the p, q, P, and Q parameters for our model. As mentioned before, the ACF plot will allow us to determine q and Q for our model. Indeed, a significant pic at lag k means that there is an important correlation and therefore a dependence. 
-Specifically, we can observe that there are 1 or 3 significant pics in the beginning of the plot (depending if we include those that slightly exceed the blue line), with the spike at lag 12 being particularly important. This leads us to conclude that q=1 or 4, and Q=1.
+Specifically, we can observe that there are 1 or 4 significant spikes in the beginning of the plot (depending if we include those that slightly exceed the blue line), with the spike at lag 12 being particularly important. This leads us to conclude that q=1 or 4, and Q=1.
 
 Similarly, we can use the PACF plot to determine the p and P parameters. A spike at lag k in the PACF plot indicates a correlation between $X_t$ and $X_{t+k}$, after removing the influence of all intermediate observations $X_{t+1}$, $X_{t+2}$, ..., $X_{t+k-1}$. After examining the PACF plot, we observe there are a lot of significant spikes outside the blue line, however we can only choose to concentrate on the most significant ones. Therefore we obtain that there is 1 or 3 significant spikes at the beginning and two more at lags 12 and 24. This leads us to conclude that p=1 or 3 and P=2.
 
 In conclusion we obtain two possible models, depending on the confidence level we impose :
 
-`(p, d, q, P, D, Q, s) = (1, 2, 1, 2, 1, 1, 12)` or `(p, d, q, P, D, Q, s) = (3, 2, 4, 3, 1, 1, 12)`
+`(p, d, q, P, D, Q, s) = (1, 2, 1, 2, 1, 1, 12)` or `(p, d, q, P, D, Q, s) = (3, 2, 4, 2, 1, 1, 12)`
 
 We can then fit the two models with the `arima` function. The function will estimate the parameters by Gaussian MLE. 
 
@@ -324,7 +339,7 @@ fit_obs1 <- arima(x, order=c(1, 2, 1), seasonal=list(order=c(2, 1, 1), period=12
 ```
 
 ```{r}
-fit_obs2 <- arima(x, order=c(3, 2, 4), seasonal=list(order=c(3, 1, 1), period=12))
+fit_obs2 <- arima(x, order=c(3, 2, 4), seasonal=list(order=c(2, 1, 1), period=12))
 #AIC(fit_obs2)
 ```
 
@@ -334,42 +349,41 @@ When fitting a SARIMA model to a time series, one common way to compare differen
 # However, it's important to note that AIC only measures the goodness of fit for a given model, and it does not necessarily tell us how well the model will perform in making predictions. 
 
 n <- length(x)
-train <- 1:(n-floor(n/2))
-Err <- array(0,c(5, floor(n/2)-2+1 )) # rolling 2-step ahead forecast 
-for(j in 0:( floor(n/3)-2 )){
+train <- 1:750
+Err <- array(0,c(2, 5+1 )) # rolling 2-step ahead forecast 
+for(j in 0:5){
   fit <- arima(x[train+j], order=c(1, 2, 1), seasonal=list(order=c(2, 1, 1), period=12))
   Err[1,j+1] <- sum(x[c(1,2) + end(train)[1]+j] - predict(fit, n.ahead=2)$pred)^2
-  fit <- arima(x[train+j], order=c(3, 2, 4), seasonal=list(order=c(3, 1, 1), period=12)) #, seasonal=list(order=c(2, 1, 1), period=12))
+  fit <- arima(x[train+j], order=c(3, 2, 4), seasonal=list(order=c(2, 1, 1), period=12))
   Err[2,j+1] <- sum(x[c(1,2) + end(train)[1]+j] - predict(fit, n.ahead=2)$pred)^2
 }
 rowMeans(Err)
 ```
 ---
 
-The function `arima` determine the parameters of the polynomials: $\Phi_{[P]} (B^s), \phi_{[p]}(B), \Theta_{[Q]}(B^s)$ and $\theta_{[q]}(B)$ as there is a onne to one correspondence between the autocovariance and the model parameters. 
+The function `arima` determine the parameters of the polynomials: $\Phi_{[P]} (B^s), \phi_{[p]}(B), \Theta_{[Q]}(B^s)$ and $\theta_{[q]}(B)$ as there is a one to one correspondence between the auto covariance and the model parameters. 
 We then obtain the following summary for our model :
 
 ```{r}
-summary(fit_obs1)
+summary(fit_obs2)
 ```
 
 ## Residual Diagnostics
 
-As in all construction of models in mathematics it is essential to perform a diagnostic of our result model. Many diagnostics are possible to access the validity of the model, we present here three of them. 
+As in all construction of models in mathematics it is essential to perform diagnostics of our result model. Many diagnostics are possible to access the validity of the model, we present here three of them. 
 
-The first one is related to the fact that the residuals of the fitting model should be roughly Gaussian. To verify this condition we make a QQ-plot of the residuals, which is shown in the Figure 7 below. And as we can see they form indeed a straight line which is a very encouraging result. 
+The first one is related to the fact that the residuals of the fitting model should be roughly Gaussian. To verify this condition we make a QQ-plot of the residuals, which is shown in the Figure 8 below. And as we can see they form indeed a straight line which is a very encouraging result. 
 
 
-```{r, fig.align="center", fig.cap="Figure 7: QQ-plot of the model's residuals."}
+```{r, fig.align="center", fig.cap="Figure 8: QQ-plot of the model's residuals."}
 qqnorm(fit_obs2$residuals)
 ```
 
 ---
 
-Moreover, another property is that the residuals should be white noise. To verify this, we can plot the ACF and PACF, as shown in Figure 8. Here again, the results are quite satisfying as there are no spikes outside the blue lines. That suggests independence between the terms. 
-However we can notice an unique spike on the first one in the ACF plot at lag 0, but this is normal since it represents the autocorrelation and by definition $\frac{\gamma(0)}{\gamma(0)} = 1$. 
+Moreover, another property is that the residuals should be white noise. To verify this, we can plot the ACF and PACF, as shown in Figure 9. Here again, the results are quite satisfying as there are no spike outside the blue lines, except one little. 
 
-```{r, fig.align="center", fig.cap="Figure 8: ACF and PACF of the residuals."}
+```{r, fig.align="center", fig.cap="Figure 9: ACF and PACF of the residuals."}
 par(mfrow = c(1, 2))
 acf(fit_obs2$residuals, lag.max=25, main="")
 pacf(fit_obs2$residuals, lag.max=25, main="")
@@ -377,9 +391,9 @@ pacf(fit_obs2$residuals, lag.max=25, main="")
 
 ---
 
-Another method to assess the quality of a fitted model is to simulate data from it. In this case, it means generating data from the year 1960 to 2022 and comparing it to the original data set that was used for fitting the model. The results of the simulation are shown in Figure 9, which is quite encouraging. The pink curve follows the major fluctuations of the process and has the same overall behavior. However, one observation that can be made is that the model tends to underestimate extreme values from the trend, such as high perturbations or black spikes.
+Another method to assess the quality of a fitted model is to simulate data from it. In this case, it means generating data from the year 1960 to 2022 and comparing it to the original data set that was used for fitting the model. The results of the simulation are shown in Figure 10, and are quite encouraging. The pink curve follows the major fluctuations of the process and has the same overall behavior. However, one observation that can be made is that the model tends to underestimate extreme values from the trend, such as high perturbations or black spikes.
 
-```{r, fig.align="center", fig.cap="Figure 9: Comparison between the data set and the simulation from the fitted model."}
+```{r, fig.align="center", fig.cap="Figure 10: Comparison between the data set and the simulation from the fitted model."}
 plot(x)
 lines(seq(1960, 2022.9999, 1/12), fitted(fit_obs2), , col="pink")
 ```
@@ -388,43 +402,53 @@ lines(seq(1960, 2022.9999, 1/12), fitted(fit_obs2), , col="pink")
 
 The primary objective of studying time series is often to make predictions with a certain degree of accuracy, along with a corresponding confidence interval. In this section, we will use the `forecast` function to achieve this goal. The figure below displays the predicted values up to 2050.
 
-```{r, fig.align="center", fig.cap="Figure 7: Prediction of the temperature until 2050 with the model established."}
+```{r, fig.align="center", fig.cap="Figure 11: Prediction of the temperature until 2050 with the model established."}
 fit <- Arima(x, order=c(1, 2, 1), seasonal=list(order=c(2, 1, 1), period=12))
 preds <- forecast(fit, 12*28, c(0.5,0.95)) # 2-year ahead forecast 
 autoplot(x) + autolayer(preds)+ ylab("Temperature")+theme_minimal()
 ```
 
-We can observe something very surprising here: the confidence interval is extremely large. There could be several reasons for this. Firstly, it is a model that has a lot of parameters, and as each parameter is estimated, each new parameter introduces uncertainty into the model. Additionally, the quadratic model is known to be more complex than linear models, and it makes it more sensitive to extreme values. It is also worth noting that the small size of the dataset being studied can also increase uncertainty.  
+We can observe something very surprising here: the confidence interval is extremely large, producing completely unusable results. There could be several reasons for this. Firstly, it is a model that has a lot of parameters, and as each parameter is estimated, each new parameter introduces uncertainty into the model. Additionally, the quadratic models are known to be more complex than linear models, and it makes it more sensitive to extreme values. It is also worth noting that the small size of the data set being studied can also increase uncertainty.  
 
 
 ## Another Model with Linear Trend 
 
 In order to compare with the model obtained in the previous section, we also fit a model with a linear trend. And we ended up with the model : `(p, d, q, P, D, Q, s) = (3, 1, 3, 2, 1, 1, 12)` 
 
-*Note : the exact same demonstration leading to this result can be shown in the document "Linear Model.Rmd"*
+*Note : the exact same demonstration leading to this result can be shown in the document "Linear Model.Rmd".*
 
-One remark to be made is that it has an AIC lower than our model find in the quadratic case. It then emphasizes the idea that it is a better model. 
+We present the diagnostic plot to examine whether the residuals exhibit white noise characteristics. From the plot, we observe that there are no spikes outside the blue lines, indicating independence between the terms. However, we do notice a single spike in the ACF plot at lag 0, which is expected as it represents the autocorrelation and, by definition, $\frac{\gamma(0)}{\gamma(0)} = 1$.
 
-```{r, fig.align="center", fig.cap="Figure 9: Prediction of the temperature until 2050 with the model established."}
+```{r, fig.align="center", fig.cap="Figure 12: ACF and PACF of the residuals."}
+fit <- Arima(x, order=c(3, 1, 3), seasonal=list(order=c(2, 1, 1), period=12))
+par(mfrow = c(1, 2))
+acf(fit$residuals, lag.max=25, main="")
+pacf(fit$residuals, lag.max=25, main="")
+```
+
+Moreover, we remark that it has an AIC lower than our model find in the quadratic case. It then emphasizes the idea that it is a better model. 
+
+```{r, fig.align="center", fig.cap="Figure 13: Prediction of the temperature until 2050 with the model established."}
 fit <- Arima(x, order=c(3, 1, 3), seasonal=list(order=c(2, 1, 1), period=12))
 preds <- forecast(fit, 12*28, c(0.5,0.95)) # 2-year ahead forecast 
 autoplot(x) + autolayer(preds)+ ylab("Temperature")+theme_minimal()
 ```
 
+---
 
-One idea to compare the predictions that we could obtain with both model. We represent the prediction until 2050 in Figure 10. 
+Therefore we can compare the predictions that we obtain with both models. We then represent the prediction until 2050 in Figure 10 with this new model. 
 
-```{r, fig.align="center", fig.cap="Figure 10: Prediction of the temperature until 2050 with the model found with a linear trend.", eval=FALSE}
+```{r, fig.align="center", fig.cap="Figure 14: Prediction of the temperature until 2050 with the model found with a linear trend.", eval=FALSE}
 fit <- Arima(x, order=c(1, 1, 2), seasonal=list(order=c(2, 0, 1), period=12))
 preds <- forecast(fit, 12*28, c(0.5,0.95)) # 2-year ahead forecast 
 autoplot(x) + autolayer(preds)+ ylab("Temperature")+theme_minimal()
 ```
 
-As we could expect the prediction follows the linear trend that we assumed before. And with this model the prediction is not so optimist for the future, it indeed predict an increasing and we will exceed 1 will a probability of 90% in 2050. Moreover even through it is not evident in the Figure, the confidence interval becomes increasingly significant as we try to predict far into the future.
+As we could expect, the prediction follow the linear trend that we assumed before. With this model, the prediction is not very optimistic for the future, as it predicts an increase and indicates that we will exceed 1 with a probability of 90% in 2050. Furthermore, although it may not be evident in the Figure, the confidence interval becomes increasingly wider and more significant as we attempt to predict further into the future.
 
 ## Auto SARIMA fonction
 
-In the R programming language, the forecast package includes a highly useful function called `auto.arima`, which is capable of automatically identifying the best SARIMA model for a given time series. `auto.arima` searches for the best model based on the Akaike information criterion (AIC) and considers only small orders to avoid overfitting.
+In the R programming language, the forecast package includes a highly useful function called `auto.arima`, which is capable of automatically identifying the best SARIMA model for a given time series. `auto.arima` searches for the best model based on the Akaike information criterion (AIC) and considers only small orders to avoid over fitting.
 
 When we applied this function to our data, the resulting best SARIMA model was:
 
@@ -441,7 +465,5 @@ $(1 + 0.66 B^{12} + 0.12 B^{2\times12}) (1+0.86B) (1-B) X_t = (1 -0.65 B^{12}) (
 
 # Conclusion
 
-In conclusion, in this study we began by constructing a SARIMA model with a linear trend, which inevitably gave us increasing results for the future. Nevertheless, after a closer examination of the assumptions, we noticed that while the hypothesis on seasonality seems justified, the linearity assumption is more controversial. Indeed, we rejected the hypothesis of an exponential trend, but could not reject that of a quadratic trend. However, as we have seen, adding a quadratic term significantly complicates the model, which increases uncertainty and renders the predictions unreliable.
-
-However, in both cases, and even more so in the second, we can observe that temperatures are increasing rapidly, which is increasingly concerning for the future and makes us reflect on how to change things.
+In conclusion, we began by analyzing different trend possibilities, and it appeared that we could not consider the exponential trend as acceptable. However, we could not reject the quadratic and seasonal components. Nevertheless, when fitting the SARIMA model with this type of trend, it became apparent that a lot of uncertainty rendered the results completely unusable. Moreover, a model with a linear trend had a better AIC, similar to the one obtained using the `auto.arima` function. Thus, the temperature trend would be linear and undoubtedly increasing, which raises many questions about the future. The rise in temperatures is not good news, and we must do everything we can to slow it down and change the forecast model. No matter the cause, it is necessary to take action right away in order to solve this problem and make the harmful effects on the Earth and its living creatures less severe. 
 
