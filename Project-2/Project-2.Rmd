@@ -33,12 +33,12 @@ library(readr)
 library(pROC)
 ```
 
-Technology has changed many fields, like healthcare, education, and transportation, by bringing in new and creative ideas. One particular thing that has become very important in our daily lives is the Internet. It has completely changed the way we work, communicate with others or purchase items. E-commerce makes it simpler than ever to buy things without leaving our homes. This ease has made online shopping very popular among people of all ages and backgrounds. Millions of transactions happen online every day.
+Technology has revolutionized many areas, such as education, and has turned our daily lives upside down especially with the emergence of Internet. It has completely changed the way we work, communicate with others or purchase items. E-commerce makes it simpler than ever to buy things without leaving our homes. This ease has made online shopping very popular among people of all ages and backgrounds. Millions of transactions happen online every day. 
  
-In this perspective, we will analyse the data set "2_online_shopping" and find a model explaining customer behavior on an e-commerce website.
+In this perspective,, we will analyse the data set "2_online_shopping" and find a model explaining customer behavior on an e-commerce website.
 
-To achieve this goal, we will proceed in 5 parts. In the first two parts, we will describe, explore and treat the data set to understand some clients' behaviors and obtain some initial intuitions. Then in the third part, we will identify a suitable model at we will carefully interpret its results. We will then carefully analyze the model's performance and evaluate its effectiveness. And we will end by discuss about the model and its implications.
-To further enhance our analysis, we will introduce a sixth part, where we will explore a possibly better model. 
+To achieve this goal, we will proceed in five parts. In the first two parts, we will describe, explore and treat the data set to understand some clients' behaviors and gain initial insights. Then in the third part, we will identify a suitable model that we will carefully interpret. We will then analyze the model's performance and evaluate its effectiveness. Finally, we will conclude by discussing about the model and its implications.
+To further enhance our analysis, we will introduce a sixth part, where we will explore the possibility of a better model. 
 
 
 ```{r, load data and rename the variable}
@@ -77,11 +77,11 @@ Data$traffic_type[Data$traffic_type == 13] <- 5
 
 # Description of the Data Set
 
-We identify the variable of interest as the `purchase` variable, a binary one, it takes the value "TRUE" if a purchase has been made and "FALSE" otherwise. The proportion of "TRUE" in this data can be calculated as `r sum(Data$purchase==TRUE)/ length(Data$purchase)`. The type of the variable of interest indicates that a logistic model might be appropriate for the problem at hand. However, it is important to examine all the features of the dataset before proceeding with the model.
+We identify the variable of interest as the `purchase` variable, a binary one, it takes the value "TRUE" if a purchase has been made and "FALSE" otherwise. The proportion of "TRUE" in this data can be calculated as `r round(sum(Data$purchase==TRUE)/ length(Data$purchase), 2)`. This type indicates that a logistic model might be appropriate for the problem at hand. However, it is important to examine all the features present in the set before constructing the model.
 
 The customer behavior on the e-commerce website can intuitively be explained by many factors: the type of product sales, the date (for instance if we approach Valentine's Day), the design of the website, the customer profile, ... 
 
-This is the reason why this data set, which aims to be as representative as possible, regroups a lot of features, 17 in total with a large diversity. As numerical variables we have : 
+That is why this data set, which aims to be as representative as possible, regroups a lot of features, 17 in total with a large diversity. As numerical variables we have : 
 
 * Administrative (`n_admin_page`) - the number of administrative-type pages that the user visited
 * Administrative Duration (`time_page_page`) - the time spent on administrative pages 
@@ -107,9 +107,9 @@ And as categorical variables :
 * Traffic Type (`traffic_type`) - where from the user arrived at the site (there is 6 different arrived possible and the last one represent the "others" category)
 * Visitor Type (`visitor_type`) - with 3 levels (new visitor, returning visitor and the other category)
 
-The data presented in Figure 1 has been log-transformed for the following variables: `n_product_page`, `page_values`, `time_admin_page`, `time_info_page`, and `time_product_page`. Indeed, without this transformation, one could wrongly assumed that most of the customers didn't have spend time on the product page; while there is only `r sum(Data$time_product_page==0)/length(Data$time_product_page)*100`% didn't. This impression is due to the presence of very high values, such as `r max(Data$time_product_page)`, which render the other values insignificant. A similar phenomenon is observed for the time spent on informative and administrative pages.
+The data presented in Figure 1 has been log-transformed for the following variables: `n_product_page`, `page_values`, `time_admin_page`, `time_info_page`, and `time_product_page`. Indeed, without this transformation, one could wrongly assume that most of the customers didn't spend time on the product page; while in reality, only `r round(sum(Data$time_product_page==0)/length(Data$time_product_page)*100, 2)`% didn't. This impression is due to the presence of very high values, such as `r round(max(Data$time_product_page), 2)`, which make the other values insignificant. A similar phenomenon is observed for the time spent on informative and administrative pages.
 
-Note: We apply the log(. +1) transformation in each case because each of the five variables takes at least once the value zero. 
+*Note: We apply the log(. +1) transformation in each case because each of the five variables takes at least once the value zero.*
 
 ```{r, log transformations}
 Data2 <- Data
@@ -159,20 +159,22 @@ Data2$visitor_type <- as.factor(Data2$visitor_type)
 
 ```
 
-In this set of plot permit to highlight some habits of potential customers. Indeed, it seems like they spend much more time on product pages than on administration and information ones, where the majority of the customer didn't go. This may seem logical since they consult product pages much more than the others. 
+This set of plot permit to highlight some habits of potential customers. Indeed, it seems like they spend much more time on product pages than on administration and information ones, where the majority of the customer didn't even go. This may seem logical since they consult product pages much more than the others. 
 
-One can observe that the number of "other visitor" is underrepresented in this data set,  as well as a lake of observation during a special day or in certain months such as January or April, where we have no observation. However, the majority of the observations seems to be "new customer". 
+One can also observe that the number of "other visitor" is underrepresented in this data set,  as well as a lake of observation during a special day or in certain months such as January or April, where we have no observation. However, the majority of the observations seems to be "new customer". 
 
-# Exploration of the Data
+Conversely, it seems that in most categorical variables, one factor is predominant. For example, most of the observations we have come from customers living in Region 1, or using browser 2. 
 
-In this part, we present some interesting detail results that we observed during the exploration part about three features.  
+# Exploration Part
+
+After this exhaustive description of the set, we can proceed to a larger exploration. In the preparatory phase, we have conducted an exploration of each variable and in this section, we report three interesting results that we consider relevant. 
 
 ## Value of pages consulted 
 
 The first feature we will discuss is the variable `page_values`. A very interesting one, since it is intuitive to assume that the higher the average page value of the visited pages, the more likely the client is to make a purchase.
 However it appears that most of the observations in our data set have a zero average. That is why on the previous graph, we observe a large spike at 0, that prevents us from clearly discerning the other values. 
 
-Thus, it may be interesting to concentrate on the observations that are non-zero average, which account for more than `r sum(Data$page_values !=0)/length(Data$page_values)*100`% of the dataset. The Figures below illustrate this.
+Thus, it may be interesting to concentrate on the observations that are non-zero average, which account for more than `r round(sum(Data$page_values !=0)/length(Data$page_values)*100, 2)`% of the data set. The Figures below illustrate this.
 
 ```{r, fig.align="center", fig.cap="Figure 2: Histograms for the non-zero `page_values` variable with no transformation on the left and log-transformation on the rigth."}
 
@@ -191,11 +193,11 @@ plot_grid(g1, g2, ncol = 2, nrow = 1)
 ```
 
 
-On these two histograms, the effects of the log transformation appear clearly. Indeed, the log transformation reduces the skewness of our original data: large values are less far apart while small values are farther apart, which makes the graph much more readable.
+On these two histograms, the effects of the log transformation are clearly visible. Indeed, the log transformation reduces the skewness of our original data: large values are less far apart while small values are farther apart, making the graph much more readable.
 
-Moreover these histograms confirm our first intuition, since the proportion of "TRUE" purchases is very high in general and especially in high averages. There is actually `r round(sum((Data$page_values !=0) * (Data$purchase)) / sum(Data$purchase)*100, 2)`% of the client who purchased something that has consulting positive page values. This is visible in the graph by observing the proportion of blue against purple. Another point to note is that although this proportion is high for all, it seems that the higher the average of the pages consulted, the greater the probability of making a purchase. The last peaks on the graph are almost entirely blue.
+Moreover, these histograms confirm our first intuition, as the proportion of "TRUE" purchases is generally high, especially for high averages. There is actually `r round(sum((Data$page_values !=0) * (Data$purchase)) / sum(Data$purchase)*100, 2)`% of the client who purchased something that has consulting positive page values. This can be observed in the graph by the proportion of blue compared to  purple. Another point to note is that although this proportion is high for all, it seems that the higher the average of the pages consulted, the greater the probability of making a purchase. The last peaks on the graph are almost entirely blue.
 
-All this observations allow us to think that in our regression, the `page_values` variable will have an impact or explain the `purchase` variable. At this point in the analysis is it impossible to evaluate the impact of a such variable. 
+All these observations lead us to believe that in our regression analysis, the `page_values` variable will have an impact on or explain the `purchase` variable. However, at this point, it is impossible to evaluate the specific impact of a such variable. 
 
 ```{r, fig.align="center", fig.cap="Figure 3: Propention of Proportion of people who made a purchase in each 0.2 interval", eval=FALSE}
 
@@ -220,9 +222,9 @@ ggplot()+
 
 ```
 
-## Product Page Visits Count
+## Number of Product Page Visited 
 
-One last variable we wanted to talk about is `n_product_page`, an interesting variable that, like `page_values`, we can suspect to have an impact on whether a purchase is made or not. Intuitively, the fewer product pages a customer consults, the less likely they are to make a purchase, unless they know exactly what they want. However, this effect is difficult to perceive, as we can see in the left histogram. To get a better idea, we separated the data by range of product pages consulted, and for each interval, we estimated the proportion of people who made a purchase. This is what the right plot represents, and we can clearly see an increase that confirms our hypothesis. Then it is a variable that can have a link too with the variable of interest. 
+Another variable we wanted to talk about is `n_product_page`, also an interesting one. Like `page_values`, we suspect it has an impact on whether a purchase is made or not. Intuitively, the fewer product pages a customer consults, the less likely they are to make a purchase, unless they already have a specific item in mind. However, this effect is difficult to perceive in the left histogram. Therefore to get a better idea, we separated the data by range of product pages consulted, and for each interval, we estimated the proportion of people who made a purchase. This is what the right plot represents, and we can clearly see an increasing trend that confirms our hypothesis. Hence, it is a variable that may also have a link with the variable of interest.  
 
 ```{r, fig.align="center", fig.cap="Figure 4: (On the Rigth) Histogram for the non-zero `time_admin_page` variable. And (on the Left) Propention of Proportion of people who made a purchase in each 0.5 Time interval", eval=FALSE}
 g1 <- ggplot(Data[Data$time_admin_page>0,])+
@@ -271,7 +273,9 @@ plot_grid(g1, g2, ncol = 2, nrow = 1)
 
 ```{r, fig.align="center", fig.cap="Figure 3: (On the Rigth) Histogram for the non-zero `n_product_page` variable. And (on the Left) Proportion of people who made a purchase in each 0.2 interval."}
 g1 <- ggplot(Data[Data$n_product_page>0,])+
-  geom_histogram(aes(x=log(n_product_page+1), color=purchase))
+  geom_histogram(aes(x=log(n_product_page+1), color=purchase))+
+  theme_minimal()+
+  scale_colour_manual(values = c("plum3", "paleturquoise3"))
 
 
 seq <- seq(0, 6, 0.2)
@@ -296,12 +300,12 @@ plot_grid(g1, g2, ncol = 2, nrow = 1)
 
 
 
-## Special Day 
+## Christmas, Valentine's Day, ...
 
 Moreover, one last thing that we notice is related to the variables `special_day` and `weekend`. In Figure 4, the last blue spike shows that every Special Day (such as Christmas or Valentine's Day) where we registered an entry on the website happened to fall on a weekend. At this point in the analysis, we don't know if it is a useful observation, but since we aim to understand how the odds of purchase are affected by date-related features, it is a result we can keep in mind.
 
 
-```{r, fig.align="center", fig.cap="Figure 4: Histograms for the non-zero `special_day` variable"}
+```{r, fig.align="center", fig.cap="Figure 4: Histograms for the non-zero `special_day` variable."}
 
 ggplot(Data[c(Data$special_day>0),])+
   geom_histogram(aes(x=special_day, color=weekend))+
@@ -315,9 +319,9 @@ ggplot(Data[c(Data$special_day>0),])+
 
 ## Theory Part 
 
-As mention before, the variable of interest is a binary variable, and the most popular method to fit this kind of variables is the logistic regression. Indeed, it aims to determine the probability of a certain event occurring (in our case the "purchase event") based on the characteristic of several independent variables. 
+As mentioned before, the variable of interest is a binary variable, and the most popular method to fit this kind of variable is the logistic regression. Indeed, it aims to determine the probability of a certain event occurring (in our case the "purchase event") based on the characteristics of several independent variables. 
 
-Furthermore, the Bernoulli distribution is of the exponential type. Indeed, the density can be written : 
+Furthermore, the Bernoulli distribution belongs to the exponential family. Indeed, the density can be written : 
 
 $$f(y) = \pi^y (1 - \pi)^{1-y}$$
 
@@ -332,7 +336,7 @@ From here we can see that $\mu = \mathbb{E}[Y] = \pi = \frac{1}{1 + e^{-\theta}}
 
 The $\beta_k$ are called the logit coefficients and reflect the size of the influence of the independent variables.
 
-They will be estimated by maximizing the likelihood.
+They will be estimated by maximizing the likelihood. 
 
 ## Model Selection
 
@@ -364,11 +368,11 @@ anova(model_full, model_entire2, test="LRT")
 
 ```
 
-To fit a model Generalized Linear Model (GLM) there is a very useful function in R, the `glm` from the package (stats). We therefore begin with the full model (with every variables), more specifically with the formula : 
+To fit a Generalized Linear Model (GLM) there is a very useful function in R, the `glm` from the package "stats". We therefore begin by the full model (with every variables), more specifically it corresponds to the following formula : 
 
 `purchase` ~ `n_admin_page` + `time_page_page` + `n_info_page` + `time_product_page` + `n_product_page` + `time_product_page` + `special_day` + `bounce_rate` + `exit_rate` + `page_values` + `month` + `weekend` + `operating_sys` + `browser` + `region` + `traffic_type` + `visitor_type`
 
-Therefore it appears that some variables don't add much to the model, i.e have a high p-value. These variables are: `browser` and `region`. We then immediately fit another model without them. This action is encouraged by the 0.6765 p-value obtained by the Likelihood Ration Test as shows the anova table below.
+Therefore it appears that some variables do not add much to the model, i.e have a high p-value. These variables are: `browser` and `region`. We then immediately fit another model without them. This action is encouraged by the 0.68 p-value obtained by the Likelihood Ration Test as shows the anova table below.
 
 ```{r}
 model_full <- glm(purchase~., data=Data_final, family="binomial")
@@ -386,9 +390,9 @@ kable(tab, align="c", caption = "Table 1: Anova table to compare the full model 
   
 ```
 
-On the other hand, it also emphasizes certain significant variables. One can find, in particular, the page_values (without surprise). It could then make sense to add an interaction between the average of page values and the number of product, informative, and administrative pages consulted. This would indeed lead to new variables that would represent, respectively, the value of the product, informative, and administrative pages consulted. And as we aim to explain the odds of purchase affected by date-related features it can also be interesting to also add an interaction between `page_values` and `month`, `weekend`, `special_day`. 
+On the other hand, it also emphasizes certain significant variables. One can find, in particular, the `page_values` (without surprise). It could then make sense to add interactions between the average of page values and the number of product, informative, and administrative pages consulted. This would indeed lead to new variables that would represent, respectively, the value of the product, informative, and administrative pages consulted. And as we aim to explain the odds of purchase affected by date-related features it can also be interesting to also add an interaction between `page_values` and `month`, `weekend`, `special_day`. 
 
-Moreover, after an analyze of the residual plots, we could suggest allowing a quadratic dependence of the time spent on product pages, which indeed turns out to be significant.
+Moreover, after analyzing the residual plots, we could suggest allowing a quadratic dependence of the time spent on product pages, which indeed turns out to be significant.
 
 ```{r, eval=FALSE}
 # Add some interactions
@@ -453,9 +457,9 @@ where every $\beta$ is a coefficient associated to one variable (or one level in
 
 $$P(Y=1 | X = X_n) = \frac{1}{1 + \exp(-z_n)}$$
 
-Hence the idea is therefore that negative coefficient will make decrease the probability of purchasing something if the feature corresponding is increasing. While in the other case, a positive coefficient will make increase the probability.
+Hence, the idea is that a negative coefficient will decrease the probability of purchasing something as the corresponding feature increases. On the other hand, a positive coefficient will increase the probability.
 
-However the precise interpretation depend on the variable, we have to distinguish the intercept, from the numerical variables and the categorical ones. 
+However, the precise interpretation depends on the variable. We have to distinguish the intercept from the numerical variables and the categorical ones. 
 
 ---
 
@@ -473,13 +477,13 @@ For numerical variable, the coefficient captures odds ratio (between two observa
 
 $$z_n = X_n \beta = \beta_1 + X_{n,nap} \beta_{nap} + ... $$
 
-So if we take two different observations such that : $X_1 = (x_{1, nap}, ... , x_{1, time_prod})$ and $X_2 = (x_{1, nap} +1, ... , x_{1, time_prod})$. We obtain :
+So if we take two different observations such that : $X_1 = (x_{1, nap}, ... , x_{1, time-prod})$ and $X_2 = (x_{1, nap} +1, ... , x_{1, time-prod})$. We obtain :
 
 - $\pi_1 =  P(Y=1 | X = X_1)$, which leads to $\beta^T X_1 = \log(\frac{\pi_1}{1 - \pi_1})$
 
 - $\pi_2 =  P(Y=1 | X = X_2)$, which leads to $\beta^T X_2 = \log(\frac{\pi_2}{1 - \pi_2})$
 
-And by subtracting we obtained : $\exp(\beta_{nap}) = \frac{\pi_1 (1 - \pi_2)}{\pi_2 (1 - \pi_1)}$ or $\log(\frac{\pi_2}{1 - \pi_2}) = \log(\frac{\pi_0}{1 - \pi_0}) + \beta_{nap}$ which leads to $\frac{\pi_2}{1 - \pi_2} = \frac{\pi_0}{1 - \pi_0} \exp(\beta_{nap})$. So as the coefficient of this feature is  0.07, we can conclude that the addition of one administration page is associated with a 7% increase in the odds of purchasing something (as $\exp(0.07) = 1.07$) holding all other predictors constant. 
+And by subtracting we obtained : $\exp(\beta_{nap}) = \frac{\pi_1 (1 - \pi_2)}{\pi_2 (1 - \pi_1)}$ or $\log(\frac{\pi_2}{1 - \pi_2}) = \log(\frac{\pi_1}{1 - \pi_1}) + \beta_{nap}$ which leads to $\frac{\pi_2}{1 - \pi_2} = \frac{\pi_1}{1 - \pi_1} \exp(\beta_{nap})$. So as the coefficient of this feature is  0.07, we can conclude that the addition of one administration page is associated with a 7% increase in the odds of purchasing something (as $\exp(0.07) = 1.07$) holding all other predictors constant. 
 
 --- 
 
@@ -492,16 +496,18 @@ And so a one unit increase in $\log(X_{n,pv} +1)$ corresponds to a multiplicatio
 
 **Categorical Variables**
 
-For categorical variables, let's take for example the feature `traffic_type` : 
+For categorical variables, let's take for example the feature `traffic_type` (tt): 
 
 $$z_n = X_n \beta = \beta_1 + I_{(X_{n,tt}==2)} \beta_{tt2} + ... + I_{(X_{n,tt}==6)} \beta_{tt6}  +... $$
-In this example, the reference categorical is the "traffic type 1". And each coefficient represents the difference in log - odds of purchasing something compare to the odds's reference. We indeed have for instance : $X_1 = (tt1, x_{pv}... )$ and $X_2 = (tt2, x_{pv}... )$. We obtain :
+In this example, the reference categorical is the "traffic type 1". And each coefficient associated to a categorical variable represents the difference in log - odds of purchasing something compare to the odds's reference. We indeed have for instance : $X_1 = (tt1, x_{pv}... )$ and $X_2 = (tt2, x_{pv}... )$. We obtain :
 
 - $\pi_1 =  P(Y=1 | X = X_1)$ leads to $\beta^T X_1  = \log(\frac{\pi_1}{1 - \pi_1})$
 
 - $\pi_2 =  P(Y=1 | X = X_2)$ leads to $\beta^T X_2 = \log(\frac{\pi_2}{1 - \pi_2})$
 
-And then by subtracting : $$\beta_{tt2} = \log(\frac{\pi_2}{1 - \pi_2}) - \log(\frac{\pi_1}{1 - \pi_1})$$
+And then by subtracting : $$\beta_{tt2} = \log(\frac{\pi_2}{1 - \pi_2}) - \log(\frac{\pi_1}{1 - \pi_1})$$. 
+
+Then, using the same calculation as in the previous case, we determined that having traffic type 2 instead of type 1 increases the odds of purchasing something by 21% (as exp(0.197) = 1.21).
 
 # Model Checking 
 
@@ -524,7 +530,9 @@ Data_final%>%
   geom_smooth()
 ```
 
-As the response variable is binary, we can see that as expected residual are organized in two clouds in every plots. We do not observe anything alarming here, moreover by inspecting the cook distance of the observations, we confirm that none has a very high value which is good news. 
+As the response variable is binary, we can see that as expected residual are organized in two clouds in every plots. We do not observe anything alarming here. The plots present a random pattern, without any discernible trends or systematic deviations. This suggests that the model adequately captures the relationship between the independent variables and the binary response variable.
+
+Moreover by inspecting the cook distance of the observations, which is a measure that estimate the influence of a data point when performing a regression, we confirm that none has a very high value which is also a good news. 
 
 ## Model Evaluation
 
@@ -578,26 +586,26 @@ kable(tab, align="c", caption = "Table 3: AIC, Residual Deviance and AUC value o
 
 In conclusion, in this report, we fitted a model to understand the behavior of customer in the website. And according to the previous part it seems to be a good one as the AUC is close to 1, and there is an acceptable residual deviance.  
 
-By analyzing the summary and the explication given in the following part, we can now understand the behavior of customers. For example, we notice that the coefficient of the variable AA is negative, which implies that the more time a person spends on these pages, the less likely they are to buy. However, the positive coefficient in front of BB implies that when a person consults these pages, he is already more likely to buy. This could be translated by the fact that when a person has decided to buy and goes to the administrative pages, the purchase will be abandoned if they are too complex or long. So, it might be useful for the company to check the efficiency and clarity of these pages. 
+By analyzing the summary and the explication given in the following part, we can now understand the behavior of customers. For example, we notice that the coefficient of the variable `time_admin_page` is negative, which implies that the more time a person spends on these pages, the less likely they are to buy. However, the positive coefficient in front of `n_admin_page` implies that when a person consults these pages, he is already more likely to buy. This could be translated by the fact that when a person has decided to buy and goes to the administrative pages, the purchase will be abandoned if they are too complex or long. So, it might be useful for the company to check the efficiency and clarity of these pages. 
 
 Of course, we also noticed some results that we remarked in the exploration part, like the more the average value of pages visited is high the more the probability of purchasing something is high. Nevertheless, this result should be emphasized twice. This variable plays a determining role in our model; it is indeed very significant and is present in many interactions. This means that the company must support and research as much as possible on this criterion to hope to improve its sales. 
 
-But some surprising results occurs like the three coefficients of the model's interactions with the pages are negative. However, since they represent the sum of the values of the observed pages in each category (and on average), one would expect the coefficients to be positive. But we can assume that this interaction is intended to attenuate the large effect of the page values variable.   
+But some surprising results occur, such as the three coefficients of the model's interactions with the pages are negative. However, since they represent the sum of the values of the observed pages in each category (and on average), one would expect the coefficients to be positive. But we can assume that this interaction is intended to attenuate the large effect of the page values variable.   
 
-Concerning the date, we can notice that the month of reference is August (the first one in alphabetical order knowing that January and April are not represented). Thus we can see that the months that have a higher positive impact on sales compared to this month are July, September and November. Which is interesting to link to the fact that November is the month before Christmas, where people buy present and July, August and September are the "summer" months where people are more likely to purchase in general. 
+Concerning the date, we can notice that the month of reference is August (the first one in alphabetical order knowing that January and April are not represented). Thus we can see that the months that have a higher positive impact on sales compared to this month are July, September and November. Which is interesting to link to the fact that November is the month before Christmas, when people buy presents and July, August and September are the "summer" months where people are more likely to purchase in general. 
 Furthermore, it is not surprising to learn that the coefficient of special day is positive, so customers are more likely to buy when a holiday arrives. 
 
 # Other possible model
 
-We have to admit that we have in fact explored very few interactions among all the possible ones. With more time it would surely have been possible to find a more accurate model (even if all models are wrong). 
+We have to admit that we have in fact explored very few interactions among all the possible ones. With more time, it would surely have been possible to find a more accurate model (even if all models are wrong). 
 
-Upon further consideration, it would be beneficial to include additional variables in the data set. Specifically, we should consider adding an indicator that reflects whether the customer viewed pages with value or not. Since most of them did not do so, although this parameter is very important in the purchase. So, due to the limited number of observations, the coefficient's results may be biased. By introducing this indicator, we can reduce the impact of this phenomenon. 
+Upon further consideration, it would be beneficial to include additional variables in the data set. Specifically, we should consider adding an indicator that reflects whether the customer viewed pages with value or not. Since most of them did not do so, despite this parameter being very important in the purchase. So, due to the limited number of observations, the coefficient's results may be biased. By introducing this indicator, we can mitigate the impact of this phenomenon.
 
 By the same reasoning, we can also put an indicator to inform if the customer has consulted pages with some values or not.
 
 ---
 
-After constructed the model, and after checking the diagnostics plots, we obtain the results show in the table 3 below. We therefore observe that both the AIC value and the Residual Deviance are lower, and the AUC is higher. Which is very encouraging to think that we found a better model.
+After constructing the model, and after checking the diagnostics plots, we obtain the results show in the table 3 below. We observe that both the AIC value and the Residual Deviance are lower, while the AUC is higher. Which is very encouraging to think that we found a better model.
 
 
 ```{r}
