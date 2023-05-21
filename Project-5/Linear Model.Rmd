@@ -1,23 +1,8 @@
 ---
-title: "Temperature"
-subtitle: |
-  | Project 5
-#author : "LAST NAME First name"
-#date: "March 19, 2023"
-output: 
-  html_document:
-    theme: cosmo
-    highlight: zenburn
-    toc: true
-    number_sections: true
-    toc_float:
-      collapsed: false
-header-includes:
-  - \usepackage{bm}
-  - \newcommand{\E}{\mathbb{E}}
-  - \newcommand{\R}{\mathbb{R}}
-#bibliography: biblio.bib
+title: "Linear Trend"
+output: html_document
 ---
+
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning=FALSE)
@@ -35,16 +20,17 @@ library(pROC)
 library(nlme)
 ```
 
+In this document we will fit a SARIMA model on the data from 1960 to 2022 with a linear trend, as it is shown in the Figure 1 below. 
 
-## Data Description
-
-As we decided to concentrate our analyze to the data from 1960 to 2022 and that a clear increasing trend is present in this period, we therefore make the hypothesis that the trend is linear as shown in Figure 2 below.  
-
-Note : We based our hypothesis on visual tendency, and also by remarking that when we attempt to fit the data to both a linear and quadratic over time model, there are not so much difference between both due to the fact that the coefficient of the $t^2$ term is extremely small (on the order of e-07), suggesting that a linear trend may sufficiently account for the behavior of the data. However we will discuss more deeply about it in the second part of the report. 
-
-```{r, fig.align="center", fig.cap="Figure 2: Illustration of the fitted trend using linear Model."}
+```{r, fig.align="center", fig.cap="Figure 1: Illustration of the fitted trend using linear Model."}
 # our first aim is to identify and subsequently remove it. To achieve this, we will attempt to fit the data to both a linear and quadratic over time model. The resulting fitting curves : 
+setwd("~/Google Drive/EPFL/Applied Stat/StatApp-314577/Project-5")
+data <- read.csv("temperature.csv", sep=",", dec=".", head=TRUE)
 
+x <- as.vector(t(data[, -c(1, 14:19)]))
+x <- ts(x, start=1880, frequency=12)
+
+x <- ts(x[961:1716], start=1960, frequency=12)
 lmData <- data.frame(y = x,
                      month = as.factor(rep(1:12,length(x)/12)),
                       t = 1:length(x))
@@ -111,9 +97,9 @@ $$= (1-B) (Y_t - Y_{t-12} + at +b - at - 12a - b) = Y_t - Y_{t-1} - Y_{t-12} + Y
 
 $$= (1 - B) (1 - B^{12}) Y_t$$
 
-It can indeed be observed that after differentiating with lag 12 and 1, we obtain something that appears to be more stationary as shown in the Figure 3. There is no more apparent trend or seasonality and the serie seems to have zero mean which is very encouraging. However, it is very difficult to prove the stationary of a series and therefore, we can only make the hypothesis. We will thus construct a model on this differentiated series. 
+It can indeed be observed that after differentiating with lag 12 and 1, we obtain something that appears to be more stationary as shown in the Figure 2. Here again there is no more apparent trend or seasonality and the series seems to have zero mean which is very encouraging. We will thus construct a model on this differentiated series. 
 
-```{r, fig.align="center", fig.cap="Figure 3: Process obtained after lag-1 and lag-12 differencing."}
+```{r, fig.align="center", fig.cap="Figure 2: Process obtained after lag-1 and lag-12 differencing."}
 x_diff <- diff(x, lag=12)
 x_diff <- diff(x_diff)
 plot(x_diff)
@@ -126,7 +112,7 @@ plot(x_diff)
 
 As enumerate before, we aim to fit a SARIMA model, we just determine that d=1 and D=1. In order to estimate the others parameters we study the ACF and PACF of this resulting process : 
 
-```{r, fig.align="center", fig.cap="Figure 4: ACF and PACF of the process."}
+```{r, fig.align="center", fig.cap="Figure 3: ACF and PACF of the process."}
 par(mfrow = c(1, 2))
 acf(x_diff, lag.max=25)
 pacf(x_diff, lag.max=25)
@@ -137,8 +123,7 @@ pacf(x_diff, lag.max=25)
 #par(mfrow = c(1))
 ```
 
-We now need to determine the p, q, P, and Q parameters for our model. The ACF plot will allow us to determine q and Q for our model. Indeed, a significant pic at lag k means that there is an important correlation and therefore a dependence. 
-Specifically, we can observe that there are 1 or 4 significant pics in the plot (depending if we include those that slightly exceed the blue line), with the spike at lag 12 being particularly prominent, and another at lag 24. This leads us to conclude that q=3 or 4, and Q=2 or 1.
+We now need to determine the p, q, P, and Q parameters for our model. Specifically, we can observe that there are 3 or 4 significant pics in the plot (depending if we include those that slightly exceed the blue line), with the spike at lag 12 being particularly prominent, and another at lag 24. This leads us to conclude that q=3 or 4, and Q=2 or 1.
 
 Similarly, we can use the PACF plot to determine the p and P parameters. A spike at lag k in the PACF plot indicates a correlation between $X_t$ and $X_{t+k}$, after removing the influence of all intermediate observations $X_{t+1}$, $X_{t+2}$, ..., $X_{t+k-1}$. After examining the PACF plot, we observe three significant spikes at the beginning and two more at lags 12 and 24. This leads us to conclude that p=3 and P=2.
 
@@ -156,50 +141,35 @@ AIC(fit_obs)
 
 ```{r}
 fit_obs1 <- arima(x, order=c(3, 1, 4), seasonal=list(order=c(2, 1, 1), period=12))
-AIC(fit_obs1)
+#AIC(fit_obs1)
 #acf(fit_obs$residuals); pacf(fit_obs$residuals)
 ```
 
 ```{r}
 fit_obs <- arima(x, order=c(3, 1, 3), seasonal=list(order=c(2, 1, 1), period=12))
-AIC(fit_obs)
+#AIC(fit_obs)
 #acf(fit_obs$residuals); pacf(fit_obs$residuals)
 ```
 
 When fitting a SARIMA model to a time series, one common way to compare different models is to look at their AIC values. A lower AIC indicates a better model fit, so we might expect the model with the smaller AIC to be the better choice. In this case, the AIC values are respectively : `r round(AIC(fit_obs1), 2)` and `r round(AIC(fit_obs), 2)`. And it therefore appears that the second one is the most appropriate for the data. 
 
-```{r, eval=FALSE}
-# However, it's important to note that AIC only measures the goodness of fit for a given model, and it does not necessarily tell us how well the model will perform in making predictions. 
-
-n <- length(x)
-train <- 1:(n-floor(n/3))
-Err <- array(0,c(2, floor(n/3)-2+1 )) # rolling 2-step ahead forecast 
-for(j in 0:( floor(n/3)-2 )){
-  fit <- arima(x[train+j], order=c(1, 1, 2), seasonal=list(order=c(2, 0, 1), period=12))
-  Err[1,j+1] <- sum(x[c(1,2) + end(train)[1]+j] - predict(fit, n.ahead=2)$pred)^2
-  fit <- arima(x[train+j], order=c(3, 1, 3)) #, seasonal=list(order=c(2, 1, 1), period=12))
-  Err[2,j+1] <- sum(x[c(1,2) + end(train)[1]+j] - predict(fit, n.ahead=2)$pred)^2
-}
-rowMeans(Err)
-```
-
-
 ## Residual Diagnostics
 
-As in all construction of models it is essential to perform a diagnostic of our result model. Many diagnostics are possible to access the validity of the model, we present here two of them. 
-The first one is related to the fact that the residuals of the fitting model should be roughly Gaussian. To verify this condition we make a QQ-plot of the residuals, which is shown in the Figure 5 below. And as we can see they form indeed a straigth line which is a very encouraging result. 
+In this section we will reproduce the exact same diagnostics that we did in the report. 
+
+So the first one is related to the fact that the residuals of the fitting model should be roughly Gaussian. And we therefore make a QQ-plot of the residuals, which is shown in the Figure below. And as we can see they form indeed a straight line which is a very encouraging result. 
 
 
-```{r, fig.align="center", fig.cap="Figure 5: QQ-plot of the model's residuals."}
+```{r, fig.align="center", fig.cap="Figure 4: QQ-plot of the model's residuals."}
 qqnorm(fit_obs$residuals)
 ```
 
 ---
 
-Moreover, another property is that the residuals should be white noise. To check this one, we can have the idea to plot the acf and pacf, which are shown in Figure 6. Here again, results are quite satisfying since there is no spike outside the blue lines. That suggests that there the terms are independent. 
-However we can notice an unique spike on the first one in the acf plot at lag 0, but this is normal since it represents the autocorrelation and by defition $\gamma(0)/\gamma(0) = 1$. 
+Moreover, we have to check that the residuals should be white noise. Then we plot the ACF and PACF, which are shown in Figure below. Here again, results are quite satisfying since there is no spike outside the blue lines. That suggests that there the terms are independent. 
+However we can notice an unique spike on the first one in the ACF plot at lag 0, but this is normal since it represents the autocorrelation and by definition $\gamma(0)/\gamma(0) = 1$. 
 
-```{r, fig.align="center", fig.cap="Figure 6: ACF and PACF of the residuals."}
+```{r, fig.align="center", fig.cap="Figure 5: ACF and PACF of the residuals."}
 par(mfrow = c(1, 2))
 acf(fit_obs$residuals, lag.max=25, main="")
 pacf(fit_obs$residuals, lag.max=25, main="")
@@ -208,25 +178,12 @@ pacf(fit_obs$residuals, lag.max=25, main="")
 
 ---
 
-Another method to assess the quality of a fitted model is to simulate data from it. In this case, it means generating data from the year 1960 to 2022 and comparing it to the original dataset that was used for fitting the model. The results of the simulation are shown in Figure 7, which is quite encouraging. The pink curve follows the major fluctuations of the process and has the same overall behavior. However, one observation that can be made is that the model tends to underestimate extreme values from the trend, such as high perturbations or black spikes.
+Another method to assess the quality of a fitted model is to simulate data from it. In this case, it means generating data from the year 1960 to 2022 and comparing it to the original data set that was used for fitting the model. The results of the simulation are very encouraging. The pink curve follows the almost every fluctuations of the process and has the same overall behavior.
 
-```{r, fig.align="center", fig.cap="Figure 7 : Comparison between the data set and the simulation from the fitted model."}
+```{r, fig.align="center", fig.cap="Figure : Comparison between the data set and the simulation from the fitted model."}
 plot(x)
 lines(seq(1960, 2022.9999, 1/12), fitted(fit_obs), , col="pink")
 ```
-
-## Predictions 
-
-The primary objective of studying time series is often to make predictions with a certain degree of accuracy, along with a corresponding confidence interval. In this section, we will use the `forecast` function to achieve this goal. The figure below displays the predicted values up to 2050.
-
-As we could expect the prediction follows the linear trend that we assumed before. And with this model the prediction is not so optimist for the future, it indeed predict an increasing and we will exceed 1 will a probability of 90% in 2050. Moreover even through it is not evident in the Figure, the confidence interval becomes increasingly significant as we try to predict far into the future. 
-
-```{r, fig.align="center", fig.cap="Figure 7: Prediction of the temperature until 2050 with the model established."}
-fit <- Arima(x, order=c(3, 1, 3), seasonal=list(order=c(2, 1, 1), period=12))
-preds <- forecast(fit, 12*28, c(0.5,0.95)) # 2-year ahead forecast 
-autoplot(x) + autolayer(preds)+ ylab("Temperature")+theme_minimal()
-```
-
 
 
 
