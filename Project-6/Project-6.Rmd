@@ -1,0 +1,217 @@
+---
+title: "Principal Component Analysis (PCA)"
+subtitle: |
+  | Project 6
+#author : "LAST NAME First name"
+#date: "March 19, 2023"
+output: 
+  html_document:
+    theme: cosmo
+    highlight: zenburn
+    toc: true
+    number_sections: true
+    toc_float:
+      collapsed: false
+header-includes:
+  - \usepackage{bm}
+  - \newcommand{\E}{\mathbb{E}}
+  - \newcommand{\R}{\mathbb{R}}
+#bibliography: biblio.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning=FALSE)
+```
+
+COVID has undoubtedly been the most impactful event of the early 2000s. It has impacted every country and the daily lives of individuals worldwide. Measures such as lock downs and isolation have been set up, and rightfully so, as COVID was recognized as a major killer, claiming over 6.7 million lives globally. This unprecedented situation has prompted statisticians and analysts to focus on the available data.
+
+Pandemic data has attracted a great deal of attention from statistical and experts. These professionals have delved into the data to understand better the situation, and assess the effectiveness of implemented measures. 
+
+In this report, our analysis focuses on the data provided by the official World Health Organization website for countries in Europe. Our objective is to apply the PCA method, a widely recognized technique for dimensional reduction. 
+
+# Data Set 
+
+The dataset covers the period from January 3, 2020, to May 24, 2023. It is important to note that our analysis focuses on a specific subset of European countries rather than including all countries. The selected countries are shown in the following list : "Austria", "Belgium" ,      "Bulgaria" ,     "Croatia"    ,   "Cyprus"      ,  "Czechia",       "Denmark"   ,   "Estonia" ,      "Finland",       "France"   ,     "Germany" ,      "Greece"  ,      "Hungary"  ,     "Iceland"  ,    "Ireland"   ,    "Italy"     ,    "Latvia" ,       "Liechtenstein", "Lithuania",     "Luxembourg" ,   "Malta","Netherlands" ,  "Norway"   ,     "Poland" ,       "Portugal"  ,    "Romania" ,      "Slovakia"    ,   "Slovenia" , "Spain"  , and        "Sweden"  . The data we are examining relate specifically to the cumulative number of deaths attributed to COVID-19, enabling us to better understand the impact of the pandemic on the selected European countries over the specified period.
+
+However, it is important to adopt a critical perspective and consider the potential limitations in data collection. Each country has its own methodology for counting the number of deaths attributed to COVID, and these methods may vary. It is possible that some countries have included deaths as COVID-related even when there was uncertainty or lack of confirmation. This discrepancy in reporting practices may lead to an overestimation of COVID deaths in certain cases.
+
+```{r}
+data <- read.csv("https://covid19.who.int/WHO-COVID-19-global-data.csv")
+liste_pays <- c("Austria", "Belgium", "Bulgaria", "Croatia", "Cyprus", "Czechia", "Denmark", "Estonia",       "Finland","France","Germany","Greece","Hungary","Iceland","Ireland"  ,     "Italy" ,        "Latvia" ,       "Liechtenstein", "Lithuania" ,    "Luxembourg"  ,  "Malta", "Netherlands" ,  "Norway" ,       "Poland" ,       "Portugal" ,     "Romania",       "Slovakia"  ,    "Slovenia" , "Spain"     ,    "Sweden"        )
+
+pop <-  c(8978929,  11617623,   6838937 ,  3862305 ,   904705  ,10516707,   5873420 ,  1331796,   5548241,  67871925, 83237124,  10459782 ,  9689010 ,   376248,   5060004 , 59030133 ,  1875757 ,    39308 ,  2805998  ,  645397 ,   520971, 17590672,   5425270,  37654247 , 10352042 , 19042455 ,  5434712  , 2107180,  47432893,  10452326)
+data = data[data$Country %in% liste_pays,]
+pop_list <- as.vector(matrix(unlist(replicate(1238,pop, simplify = FALSE), recursive = FALSE), byrow=TRUE, ncol=30))
+
+data$Cumulative_deaths <- data$Cumulative_deaths/pop_list*1000000
+
+data <- data[,c(1, 3, 8)]
+matrice_data <- matrix(data$Cumulative_deaths, byrow=TRUE, ncol=1238)
+```
+
+```{r, fig.align="center", fig.cap="Table 1: Overview of the Data.", eval=FALSE}
+head(data)
+```
+
+```{r, fig.align="center"}
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+tab <- matrix(c(data[1,], data[2,], data[3,]), nrow=3, ncol=3, byrow=TRUE) 
+colnames(tab) <- c("Date", "Country", "Cumulative_deaths")
+kable(tab, align="c", caption="Table 1: Overview of the Data.", table.attr = "style='width:50%;'", booktabs=T)%>% kable_styling(position = "center")
+```
+
+---
+
+However, it's easy to see that country-by-country data are difficult to compare. Intuitively, the more inhabitants a country has, the greater the number of deaths. To get around this problem, a common solution is to transform the data into a cumulative rate per million inhabitants. This is what we obtain in the following figure: 
+
+
+```{r, fig.align="center", fig.cap="Figure 1: Plot of the cumulative death for every country with the mean in red."}
+max <- max(data$Cumulative_deaths)
+min <- min(data$Cumulative_deaths)
+plot(1:1238, colMeans(matrice_data),type="l", ylim=c(min, max), col="red", xlab="Time (in day)", ylab="Cumulative count of deaths")
+for (country in 1:30){
+  points(1:1238, matrice_data[country,],type="l")
+}
+points(1:1238, colMeans(matrice_data),type="l", ylim=c(min, max), col="red")
+#points(1:1238, data[data$Country=="Bulgaria",]$Cumulative_deaths, type="l", col=3)
+#points(1:1238, data[data$Country=="Iceland",]$Cumulative_deaths, type="l", col=2)
+```
+This representation of the data set allows us to make several observations. 
+The first is that as time goes by, the variance of the data increases, and each country deviates more and more from the mean. 
+We can also observe a succession of "small waves" which probably show the various waves of the covid before and after confinement. 
+
+It is also worth noting that Bulgaria had the highest number of deaths per capita at the end of the period, while Iceland was the least affected country in Europe. This may make sense, given that Iceland is an island and therefore better protected from the epidemic. What's more, because the island is so vast for so few inhabitants, the population is less concentrated than in some countries, which is favorable in the event of an epidemic such as COVID. 
+
+---
+
+For a better distribution of the value, we will work from now on with the logarithm of the values. 
+
+Moreover, before applying our PCA, we decide to apply a smoothing method to each of the curves corresponding to a country. This reduces the variability of the curves and makes them smoother. In fact, we have discrete data (each day) whereas in reality we're studying a continuous phenomenon. Noisy data can indeed be a problem for PCA, so these methods enable better structure identification. 
+
+We show the result data in the following figure : 
+
+```{r}
+
+
+data$Cumulative_deaths = log(data$Cumulative_deaths +0.001)
+
+#min(data$cumulative_count[!is.na(data$cumulative_count) & !data$cumulative_count==0])
+#data[data$Cumulative_deaths==0 & !is.na(data$Cumulative_deaths),]$Cumulative_deaths = rep(-100, length(data[data$Cumulative_deaths==0 & !is.na(data$Cumulative_deaths),]$Cumulative_deaths))
+
+```
+
+```{r}
+matrice_data <- matrix(data$Cumulative_deaths, byrow=TRUE, ncol=1238)
+
+liste_dedoublee <- unlist(replicate(1238,liste_pays, simplify = FALSE), recursive = FALSE)
+liste_dedoublee <- matrix(liste_dedoublee, byrow=FALSE, ncol=30)
+dataset <- data.frame(time = rep(1:1238,30),
+                     country = as.vector(t(matrix(liste_dedoublee, byrow=FALSE, ncol=30))),
+                     cumulative_count = as.vector(t(matrice_data)))
+```
+
+```{r}
+matrice_smooth <- matrice_data
+for (i in 1:30){
+  matrice_smooth[i,] <- ksmooth(1:1238, matrice_data[i,], "normal", bandwidth = 10)$y
+}
+```
+
+```{r, fig.align="center", fig.cap="Figure 2: Plot of the log of the cumulative death for every country with the mean in red."}
+max <- max(data$Cumulative_deaths)
+min <- min(data$Cumulative_deaths)
+plot(1:1238, colMeans(matrice_smooth),type="l", ylim=c(min, max), col="red", xlab="Time (in day)", ylab="Cumulative count of deaths")
+for (country in 1:30){
+  points(1:1238, matrice_smooth[country,],type="l")
+}
+points(1:1238, colMeans(matrice_smooth),type="l", ylim=c(min, max), col="red")
+```
+
+
+
+```{r}
+perform_pca <- function(X){
+  mu <- colMeans(X)
+  X <- sweep(X,2,mu)
+  
+  SVD <- svd(X)
+  Scores <- SVD$u %*% diag(SVD$d)
+  Loadings <- SVD$v
+  FVE <- SVD$d^2/sum(SVD$d^2)
+  
+  lam <- sqrt(length(xeval)) # measure change
+  op <- par(mfrow=c(3,2),mar=rep(2,4))
+  plot(xeval, X[1,]+mu,type="l", ylim=range(X+mu), main="Data and the mean")
+  for(n in 1:dim(X)[1]) points(xeval, X[n,]+mu,type="l")
+  points(xeval,mu,col=2,lwd=2,type="l")
+  plot(Scores[1,]*sign(sum(Loadings[,1])), Scores[2,]*sign(sum(Loadings[,2])), main="1st vs 2nd PC scores")
+  
+  plot(xeval,Loadings[,1]*sign(sum(Loadings[,1])),type="l", main=paste0("1st PC (",round(100*FVE[1])," % of var)"))
+  plot(xeval,Loadings[,2]*sign(sum(Loadings[,2])),type="l", main=paste0("2nd PC (",round(100*FVE[2])," % of var)"))
+  plot(xeval,Loadings[,3]*sign(sum(Loadings[,3])),type="l", main=paste0("3rd PC (",round(100*FVE[3])," % of var)"))
+  plot(xeval,Loadings[,4]*sign(sum(Loadings[,4])),type="l", main=paste0("4th PC (",round(100*FVE[4])," % of var)"))
+}
+
+#xeval <- seq(1, 1238 ,by=1)
+#perform_pca(matrice_smooth)
+``` 
+
+
+# Selection 
+
+In our study, we specifically aim to examine the early phase of the pandemic when the number of deaths increased rapidly. To focus our analysis, we decided to limit our attention to the initial period when the cumulative number of deaths per million inhabitants reached 2.7. By observing the previous graph, we can identify this period as approximately when the logarithmic scale reaches -1. During this time frame, spanning around 100 days, we observe significant changes that could be highly intriguing to investigate in detail.
+
+It is important to note that the timeline varies across countries. Currently, the time point 3 corresponds to the third day after a country surpasses the threshold of 2.7 deaths per million inhabitants. It is crucial to consider this difference in timing when comparing the data between countries.
+
+---
+
+We can now perform the PCA : 
+
+```{r}
+matrice_cut <- matrix(0, nrow=30, ncol=100)
+for (i in 1:30){
+  indice <- which.min(abs(matrice_data[i,] +1 ))
+  matrice_cut[i,] <- matrice_data[i,indice:(indice+99)]
+}
+```
+
+```{r}
+matrice_cut_smooth <- matrice_cut
+for (i in 1:30){
+  matrice_cut_smooth[i,] <- ksmooth(1:100, matrice_cut_smooth[i,], "normal", bandwidth = 10)$y
+}
+```
+
+
+
+```{r, eval=FALSE}
+max <- max(matrice_cut_smooth)
+min <- min(matrice_cut_smooth)
+plot(1:100, colMeans(matrice_cut_smooth),type="l", ylim=c(min, max), col="red")
+for (country in 1:30){
+  points(1:100, matrice_cut_smooth[country,],type="l")
+}
+points(1:100, matrice_cut_smooth[3,],type="l", col="green")
+```
+
+```{r, fig.align="center", fig.cap="Figure 3: Results of the PCA."}
+xeval <- seq(1, 100 ,by=1)
+perform_pca(matrice_cut_smooth)
+```
+
+The first principal component, which explains the biggest variation of the data (precisely 92%), exhibits a positive curve that gradually increases during the initial days before stabilizing around day 50. It hence captures the variability in overall accumulation of the deaths and suggests a rapid growth phase at the beginning of the pandemic. The stabilization observed after approximately 50 days may reflect a period when public health measures and interventions of the government started to mitigate the impact of the pandemic.
+
+The second principal component represents a decreasing curve that surpasses zero around day 35. This decreasing trend suggests a relative decrease in the number of deaths over time. It is possible that some countries successfully managed to control the spread of the virus and reduce the number of daily deaths. This could be attributed to effective measures such as lockdowns, social distancing, or vaccination efforts that slowed the progression of the disease and saved lives.
+
+The last component is a curve that, contrary to the other two, initially decreases and then increases. This contrast between the beginning and end of the period can be observed. In the early days, when the severity of COVID was still uncertain, there may have been a sense of fear and uncertainty. This could have led the government to intervene and take measures to better control the situation, resulting in fewer deaths. 
+However, towards the end of the period, there may have been a relaxation of measures, perhaps due to a combination of strict guidelines becoming burdensome and a desire for a return to normality. This relaxation may have contributed to a further increase in the number of deaths.
+
+---
+
+In the plot of PC1 against PC2, it is noticeable that most of the observations are clustered along the x-axis, confirming that PC1 explains more variability than the second component. However, we can also notice the presence of two outliers : one in the top-left representing Austria and one in the bottom-right representing Bulgaria. These outliers should be taken into consideration as they may represent special cases and influence the PCA results towards incorrect conclusions. Particularly, Bulgaria seems to place significant importance on the second component compared to the other values, deviating from the overall pattern observed in the dataset.This may make sense, as we had already seen in the exploration part that Bulgaria had the highest cumulative rate. Here, however, the fact that the coefficient of PC2 is negative (-20) gives a further positive impact (in addition to the first component) on these rates. 
+
+# Conclusion
+
+In conclusion, the PCA method enabled us to identify trends and differences in behavior between countries, such as the disparities observed for Austria and Bulgaria. This study has enabled us to observe that even with dimensional reduction, a significant proportion of the variance is retained, capturing key features of the data. PCA analysis provided valuable insights into the data set, highlighting the underlying patterns and variations that exist between the countries in our study.
